@@ -57,7 +57,14 @@
       </div>
       <input id="playerSearch" class="border p-2 rounded mb-4 w-full" placeholder="Search..."/>
       <table class="w-full border-collapse">
-        <thead><tr class="bg-gray-100"><th class="border p-2">Name</th><th class="border p-2">ELO</th><th class="border p-2">Matches</th></tr></thead>
+        <thead>
+          <tr class="bg-gray-100">
+            <th class="border p-2">Name</th>
+            <th class="border p-2">ELO</th>
+            <th class="border p-2">Matches</th>
+            <th class="border p-2">Delete</th>
+          </tr>
+        </thead>
         <tbody id="playerTable"></tbody>
       </table>
     </section>
@@ -237,7 +244,10 @@
         tr.innerHTML = `
           <td class="border p-2">${p.name}</td>
           <td class="border p-2">${p.elo}</td>
-          <td class="border p-2">${p.wins+p.draws+p.losses}</td>`;
+          <td class="border p-2">${p.wins+p.draws+p.losses}</td>
+          <td class="border p-2">
+            <button class="del-btn bg-red-500 text-white px-2 rounded" data-id="${p.id}">Delete</button>
+          </td>`;
         pt.appendChild(tr);
       });
 
@@ -373,12 +383,12 @@
       prof.innerHTML = `
         <h3 class="text-lg font-bold mb-2">${p.name} (ELO: ${p.elo})</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="stat-tile"><div>Win %</div><div class="relative bg-gray-200 rounded h-4 mt-1"><div class="absolute bg-green-500 h-4 rounded" style="width:${d.winPct}%"></div><div class="absolute inset-0 flex items-center justify-center text-sm">${d.winPct}%</div></div></div>
+          <div class="stat-tile"><div>Win %</div><div class="relative bg-gray-200 rounded h-4 mt-1"><div class="absolute bg-green-500 h-4 rounded" style="width:${d.winPct}%"></div><div class="absolute[...]
           <div class="stat-tile"><div>Avg Goal Margin</div><div class="mt-1 font-bold ${d.goalMargin>=0?'text-green-600':'text-red-600'}">${d.goalMargin}</div></div>
           <div class="stat-tile"><div>Current Streak</div><div class="badge ${d.curStreak>0?'unlocked':'locked'}">${d.curStreak>0?`W ${d.curStreak}`:`L ${-d.curStreak||0}`}</div></div>
           <div class="stat-tile"><div>Longest Streak</div><div class="badge unlocked">🏅 ${d.maxStreak}</div></div>
           <div class="stat-tile"><div>Biggest Upsets</div><div>🏆 ${d.upsets}</div></div>
-          <div class="stat-tile"><div>ELO Sparkline</div><svg width="100" height="20"><polyline fill="none" stroke="${d.spark.slice(-1)>=d.spark[0]?'green':'red'}" stroke-width="1" points="${d.spark.map((v,i)=>`${i*5},${20 - (v - Math.min(...d.spark))/(Math.max(...d.spark)-Math.min(...d.spark)||1)*20}`).join(' ')}"/></svg></div>
+          <div class="stat-tile"><div>ELO Sparkline</div><svg width="100" height="20"><polyline fill="none" stroke="${d.spark.slice(-1)>=d.spark[0]?'green':'red'}" stroke-width="1" points="${d.spark.m[...]
           <div class="stat-tile"><div>Clean Sheet Rate</div><div>${d.total? Math.round(d.cleanSheets/d.total*100):0}%</div></div>
           <div class="stat-tile"><div>Weekly Matches</div><div>${d.weekCount}</div></div>
         </div>
@@ -398,6 +408,20 @@
         </div>
       `;
     };
+
+    // Delete player functionality
+    document.getElementById('playerTable').onclick = async (e) => {
+      if (e.target.classList.contains('del-btn')) {
+        if (!confirm('Delete this player?')) return;
+        const id = e.target.dataset.id;
+        await deletePlayer(id);
+      }
+    };
+
+    async function deletePlayer(id) {
+      const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js');
+      await deleteDoc(doc(db, 'players', id));
+    }
 
     // Init
     rerender();
