@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Table‑Soccer ELO Hub (Realtime DB)</title>
+  <title>Table‑Soccer ELO Hub</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -57,7 +57,7 @@
       </div>
       <input id="playerSearch" class="border p-2 rounded mb-4 w-full" placeholder="Search..."/>
       <table class="w-full border-collapse">
-        <thead><tr class="bg-gray-100"><th class="border p-2">Name</th><th class="border p-2">ELO</th><th class="border p-2">Matches</th><th class="border p-2">Actions</th></tr></thead>
+        <thead><tr class="bg-gray-100"><th class="border p-2">Name</th><th class="border p-2">ELO</th><th class="border p-2">Matches</th></tr></thead>
         <tbody id="playerTable"></tbody>
       </table>
     </section>
@@ -169,177 +169,238 @@
   <!-- Firebase + App Logic -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import { getAnalytics }  from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js';
     import {
-      getDatabase,
-      ref,
-      onValue,
-      push,
-      update,
-      remove,
-      serverTimestamp
-    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+      getFirestore, collection, onSnapshot,
+      addDoc, updateDoc, doc, serverTimestamp,
+      arrayUnion, writeBatch
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
 
-    // 1) Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAX2LLZYbQuWFrDuU0-_guF0lR9FMfVD6I",
       authDomain: "bordfodbolddtu.firebaseapp.com",
-      databaseURL: "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bordfodbolddtu",
       storageBucket: "bordfodbolddtu.firebasestorage.app",
       messagingSenderId: "993863941891",
-      appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
+      appId: "1:993863941891:web:24c5c2408d254ad6d0f336",
+      measurementId: "G-E2TJRPMTEW"
     };
+
     const app = initializeApp(firebaseConfig);
-    const db  = getDatabase(app);
+    getAnalytics(app);
+    const db = getFirestore(app);
 
-    // 2) In‑memory stores
-    let players = {};
-    let matches = {};
+    let players = [], matches = [];
 
-    // 3) Realtime listeners
-    onValue(ref(db, 'players'), snap => {
-      players = snap.val() || {};
+    // Real‑time listeners
+    onSnapshot(collection(db, 'players'), snap => {
+      players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       rerender();
     });
-    onValue(ref(db, 'matches'), snap => {
-      matches = snap.val() || {};
+    onSnapshot(collection(db, 'matches'), snap => {
+      matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       rerender();
     });
 
-    // 4) UI rendering & helpers
+    // UI helpers
     function computePlayerData(p) {
       const total = p.wins + p.draws + p.losses;
       const winPct = total ? Math.round(p.wins / total * 100) : 0;
       const goalMargin = total ? ((p.goalsFor - p.goalsAgainst) / total).toFixed(1) : '0.0';
       const curStreak = p.currentStreak || 0;
-      const maxStreak = p.maxStreak     || 0;
+      const maxStreak = p.maxStreak || 0;
       const cleanSheets = p.cleanSheets || 0;
-      const now = Date.now();
-      const weekCount = Object.values(matches)
-        .filter(m => m.playerIds?.includes(p.id) && m.date > now - 7*864e5)
-        .length;
-      const spark = Object.entries(p.history || {})
-        .sort((a,b)=>a[0]-b[0])
-        .map(([_,v])=>v)
-        .slice(-20);
-      const upsets = Object.values(matches)
-        .filter(m => m.winnerId===p.id && (m.eloBeforeOpponent - m.eloBeforeSelf)>=200)
-        .length;
+      const weekCount = matches.filter(m =>
+        m.playerIds?.includes(p.id) && m.date.toDate() > Date.now() - 7*864e5
+      ).length;
+      const spark = p.history || [];
+      const upsets = matches.filter(m =>
+        m.winnerId === p.id && (m.eloBeforeB - m.eloBeforeA) >= 200
+      ).length;
       return { winPct, goalMargin, curStreak, maxStreak, cleanSheets, weekCount, spark, upsets, total };
     }
 
-    function rerender(){
-      // convert objects → arrays for sorting/indexing
-      const pArr = Object.values(players);
-      const mArr = Object.values(matches);
-
+    function rerender() {
       // Dashboard
-      document.getElementById('totalPlayers').textContent = pArr.length;
-      document.getElementById('matchesWeek').textContent = mArr.filter(m=>m.date>Date.now()-7*864e5).length;
-      document.getElementById('averageElo').textContent = pArr.length
-        ? Math.round(pArr.reduce((s,p)=>s+p.elo,0)/pArr.length)
-        : 0;
-      document.getElementById('pendingAch').textContent = 0;
+      document.getElementById('totalPlayers').textContent = players.length;
+      document.getElementById('averageElo').textContent =
+        players.length ? Math.round(players.reduce((a,p)=>a+p.elo,0)/players.length) : 0;
+      document.getElementById('matchesWeek').textContent =
+        matches.filter(m => m.date.toDate() > Date.now() - 7*864e5).length;
 
       // Players list
-      const pf = document.getElementById('playerSearch').value.toLowerCase();
-      const tbodyP = document.getElementById('playerTable');
-      tbodyP.innerHTML = '';
-      pArr.filter(p=>p.name.toLowerCase().includes(pf)).forEach(p=>{
-        const tr = document.createElement('tr'); tr.className='hover:bg-gray-100';
-        tr.innerHTML = `<td class="border p-2">${p.name}</td>
-                        <td class="border p-2">${p.elo}</td>
-                        <td class="border p-2">${p.wins+p.draws+p.losses}</td>
-                        <td class="border p-2"><button class="delete-btn bg-red-500 text-white px-2 py-1 rounded" data-id="${p.id}">Delete</button></td>`;
-        tbodyP.appendChild(tr);
-      });
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = () => {
-          if (!confirm('Slet spiller? Denne handling kan ikke fortrydes.')) return;
-          remove(ref(db, `players/${btn.dataset.id}`));
-        };
+      const pt = document.getElementById('playerTable'),
+            pf = document.getElementById('playerSearch').value.toLowerCase();
+      pt.innerHTML = '';
+      players.filter(p => p.name.toLowerCase().includes(pf)).forEach(p => {
+        const tr = document.createElement('tr'); tr.className = 'hover:bg-gray-100';
+        tr.innerHTML = `
+          <td class="border p-2">${p.name}</td>
+          <td class="border p-2">${p.elo}</td>
+          <td class="border p-2">${p.wins+p.draws+p.losses}</td>`;
+        pt.appendChild(tr);
       });
 
       // Leaderboard
-      const lf = document.getElementById('lbSearch').value.toLowerCase();
-      const tbodyL = document.getElementById('lbTable');
-      tbodyL.innerHTML = '';
-      pArr.filter(p=>p.name.toLowerCase().includes(lf))
-          .sort((a,b)=>b.elo-a.elo)
-          .forEach((p,i)=>{
+      const lb = document.getElementById('lbTable'),
+            lf = document.getElementById('lbSearch').value.toLowerCase();
+      lb.innerHTML = '';
+      players.filter(p=>p.name.toLowerCase().includes(lf))
+             .sort((a,b)=>b.elo - a.elo)
+             .forEach((p,i)=> {
         const tr = document.createElement('tr'); tr.className='hover:bg-gray-100';
-        tr.innerHTML = `<td class="border p-2">${i+1}</td>
-                        <td class="border p-2">${p.name}</td>
-                        <td class="border p-2">${p.elo}</td>`;
-        tbodyL.appendChild(tr);
+        tr.innerHTML = `
+          <td class="border p-2">${i+1}</td>
+          <td class="border p-2">${p.name}</td>
+          <td class="border p-2">${p.elo}</td>`;
+        lb.appendChild(tr);
       });
 
-      // Populate selects
-      ['selA1','selB1','selA21','selA22','selB21','selB22','statsPlayerSelect']
-        .forEach(id=>{
-          const sel = document.getElementById(id);
-          sel.innerHTML = id==='statsPlayerSelect'
-            ? '<option value="">Select player</option>'
-            : '<option value="">--</option>';
-          pArr.forEach((p,i)=>{
-            sel.innerHTML += `<option value="${i}">${p.name} (${p.elo})</option>`;
-          });
+      // Form selects
+      ['selA1','selB1','selA21','selA22','selB21','selB22','statsPlayerSelect'].forEach(id=>{
+        const sel = document.getElementById(id);
+        sel.innerHTML = id==='statsPlayerSelect'
+          ? '<option value="">Select player</option>'
+          : '<option value="">--</option>';
+        players.forEach((p,i)=> {
+          sel.innerHTML += `<option value="${i}">${p.name} (${p.elo})</option>`;
         });
+      });
     }
 
-    // Navigation & form toggles
-    document.querySelectorAll('.nav-btn').forEach(b=>{
-      b.onclick=()=>{
-        document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('text-blue-600'));
-        b.classList.add('text-blue-600');
+    // Navigation & match form toggles
+    document.querySelectorAll('.nav-btn').forEach(btn=>{
+      btn.onclick = () => {
+        document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('text-blue-600'));
+        btn.classList.add('text-blue-600');
         document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-        document.getElementById(b.dataset.target).classList.add('active');
+        document.getElementById(btn.dataset.target).classList.add('active');
+        if (btn.dataset.target==='stats') document.getElementById('statsPlayerSelect').focus();
       };
     });
-    document.querySelectorAll('.mode-btn').forEach(b=>{
-      b.onclick=()=>{
-        document.querySelectorAll('.mode-btn').forEach(x=>{
-          x.classList.replace('bg-blue-500','bg-gray-300');
-          x.classList.replace('text-white','text-gray-700');
+    document.querySelectorAll('.mode-btn').forEach(btn=>{
+      btn.onclick = () => {
+        document.querySelectorAll('.mode-btn').forEach(b=>{
+          b.classList.replace('bg-blue-500','bg-gray-300');
+          b.classList.replace('text-white','text-gray-700');
         });
-        b.classList.replace('bg-gray-300','bg-blue-500');
-        b.classList.replace('text-gray-700','text-white');
+        btn.classList.replace('bg-gray-300','bg-blue-500');
+        btn.classList.replace('text-gray-700','text-white');
         document.querySelectorAll('.match-form').forEach(f=>f.classList.add('hidden'));
-        document.getElementById(
-          b.dataset.mode==='1v1' ? 'form1v1' : 'form2v2'
-        ).classList.remove('hidden');
+        document.getElementById(btn.dataset.mode==='1v1'?'form1v1':'form2v2').classList.remove('hidden');
       };
     });
 
-    // Add new player
-    document.getElementById('addPlayer').onclick = ()=>{
+    // Add player
+    document.getElementById('addPlayer').onclick = async () => {
       const name = document.getElementById('newName').value.trim();
       const elo  = parseInt(document.getElementById('newElo').value) || 100;
-      if(!name) return alert('Enter a name');
-      const newRef = push(ref(db,'players'));
-      update(ref(db), {
-        [`players/${newRef.key}`]: {
-          id:newRef.key,name,elo,
-          wins:0,draws:0,losses:0,
-          goalsFor:0,goalsAgainst:0,
-          currentStreak:0,maxStreak:0,
-          cleanSheets:0,
-          history:{ [Date.now()]:elo }
-        }
+      if (!name) return alert('Enter a name');
+      await addDoc(collection(db,'players'),{
+        name, elo,
+        wins:0, draws:0, losses:0,
+        goalsFor:0, goalsAgainst:0,
+        currentStreak:0, maxStreak:0,
+        cleanSheets:0,
+        history:[elo]
       });
       document.getElementById('newName').value = '';
     };
+    document.getElementById('playerSearch').oninput = rerender;
+    document.getElementById('lbSearch').oninput       = rerender;
 
-    // Register 1v1 match
-    document.getElementById('reg1v1').onclick = ()=>{ /* unchanged */ };
-    // Register 2v2 match
-    document.getElementById('reg2v2').onclick = ()=>{ /* unchanged */ };
+    // Register 1v1
+    document.getElementById('reg1v1').onclick = async () => {
+      const ai = +document.getElementById('selA1').value,
+            bi = +document.getElementById('selB1').value;
+      const sA = +document.getElementById('scoreA1').value,
+            sB = +document.getElementById('scoreB1').value;
+      if (isNaN(ai)||isNaN(bi)||ai===bi) return alert('Pick two distinct players');
+      const pA = players[ai], pB = players[bi];
+      // update stats...
+      pA.goalsFor += sA; pA.goalsAgainst += sB;
+      pB.goalsFor += sB; pB.goalsAgainst += sA;
+      const rA = sA>sB?1:sA<sB?0:0.5, rB=1-rA;
+      if (rA>rB) { pA.wins++; pB.losses++; pA.currentStreak++; pB.currentStreak=0; }
+      else if (rB>rA) { pB.wins++; pA.losses++; pB.currentStreak++; pA.currentStreak=0; }
+      else { pA.draws++; pB.draws++; pA.currentStreak=0; pB.currentStreak=0; }
+      pA.maxStreak = Math.max(pA.maxStreak,pA.currentStreak);
+      pB.maxStreak = Math.max(pB.maxStreak,pB.currentStreak);
+      if (sB===0) pA.cleanSheets++;
+      if (sA===0) pB.cleanSheets++;
+      // ELO calculation
+      const diff = Math.abs(sA-sB),
+            K    = diff ? 32*(1+0.05*diff) : 32,
+            expA = 1/(1+10**((pB.elo-pA.elo)/400)),
+            expB = 1/(1+10**((pA.elo-pB.elo)/400)),
+            newA = Math.round(pA.elo + K*(rA-expA)),
+            newB = Math.round(pB.elo + K*(rB-expB));
+      pA.history.push(newA); pB.history.push(newB);
+      // batch update
+      const batch = writeBatch(db),
+            refA = doc(db,'players',pA.id),
+            refB = doc(db,'players',pB.id),
+            refM = doc(collection(db,'matches'));
+      batch.update(refA, { elo:newA, wins:pA.wins, draws:pA.draws, losses:pA.losses,
+        goalsFor:pA.goalsFor, goalsAgainst:pA.goalsAgainst,
+        currentStreak:pA.currentStreak, maxStreak:pA.maxStreak,
+        cleanSheets:pA.cleanSheets,
+        history: arrayUnion(newA)
+      });
+      batch.update(refB, { elo:newB, wins:pB.wins, draws:pB.draws, losses:pB.losses,
+        goalsFor:pB.goalsFor, goalsAgainst:pB.goalsAgainst,
+        currentStreak:pB.currentStreak, maxStreak:pB.maxStreak,
+        cleanSheets:pB.cleanSheets,
+        history: arrayUnion(newB)
+      });
+      batch.set(refM, {
+        mode:'1v1', date:serverTimestamp(),
+        playerIds:[pA.id,pB.id], scoreA:sA, scoreB:sB,
+        eloBeforeA:pA.elo, eloBeforeB:pB.elo,
+        winnerId: newA>newB? pA.id : newB>newA? pB.id : null,
+        loserId:  newA>newB? pB.id : newB>newA? pA.id : null
+      });
+      await batch.commit();
+    };
 
-    // Stats tab
-    document.getElementById('statsPlayerSelect').onchange = ()=>{ /* unchanged */ };
+    // Populate stats select & render profile
+    document.getElementById('statsPlayerSelect').onchange = () => {
+      const idx = +document.getElementById('statsPlayerSelect').value;
+      const prof = document.getElementById('profile');
+      prof.innerHTML = '';
+      if (isNaN(idx)) return;
+      const p = players[idx], d = computePlayerData(p);
+      prof.innerHTML = `
+        <h3 class="text-lg font-bold mb-2">${p.name} (ELO: ${p.elo})</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="stat-tile"><div>Win %</div><div class="relative bg-gray-200 rounded h-4 mt-1"><div class="absolute bg-green-500 h-4 rounded" style="width:${d.winPct}%"></div><div class="absolute inset-0 flex items-center justify-center text-sm">${d.winPct}%</div></div></div>
+          <div class="stat-tile"><div>Avg Goal Margin</div><div class="mt-1 font-bold ${d.goalMargin>=0?'text-green-600':'text-red-600'}">${d.goalMargin}</div></div>
+          <div class="stat-tile"><div>Current Streak</div><div class="badge ${d.curStreak>0?'unlocked':'locked'}">${d.curStreak>0?`W ${d.curStreak}`:`L ${-d.curStreak||0}`}</div></div>
+          <div class="stat-tile"><div>Longest Streak</div><div class="badge unlocked">🏅 ${d.maxStreak}</div></div>
+          <div class="stat-tile"><div>Biggest Upsets</div><div>🏆 ${d.upsets}</div></div>
+          <div class="stat-tile"><div>ELO Sparkline</div><svg width="100" height="20"><polyline fill="none" stroke="${d.spark.slice(-1)>=d.spark[0]?'green':'red'}" stroke-width="1" points="${d.spark.map((v,i)=>`${i*5},${20 - (v - Math.min(...d.spark))/(Math.max(...d.spark)-Math.min(...d.spark)||1)*20}`).join(' ')}"/></svg></div>
+          <div class="stat-tile"><div>Clean Sheet Rate</div><div>${d.total? Math.round(d.cleanSheets/d.total*100):0}%</div></div>
+          <div class="stat-tile"><div>Weekly Matches</div><div>${d.weekCount}</div></div>
+        </div>
+        <h4 class="text-lg font-bold mb-2">Achievements</h4>
+        <div>
+          ${[
+            ['century',    'Century Scorer',    p.goalsFor>=100],
+            ['spotless',   'Spotless Defense',  p.cleanSheets>=10],
+            ['unstoppable','Unstoppable Streak',p.maxStreak>=7],
+            ['marathoner', 'Marathoner',        d.total>=50],
+            ['pioneer',    'ELO Pioneer',       p.elo>=1200],
+            ['giant',      'Giant Slayer',      d.upsets>=1],
+            ['team',       'Team Player',       false],
+            ['social',     'Social Butterfly',  false],
+            ['legendary',  'Legendary Run',     false],
+          ].map(([k,title,ok]) => `<span class="badge ${ok?'unlocked':'locked'}">${title}</span>`).join('')}
+        </div>
+      `;
+    };
 
-    // Kickoff
+    // Init
     rerender();
-  }</script>
+  </script>
 </body>
 </html>
