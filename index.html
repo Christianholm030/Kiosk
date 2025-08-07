@@ -9,43 +9,75 @@
       --bg:#0b0f14; --panel:#121821; --muted:#1b2431; --text:#e9eef7; --sub:#b8c3d6; --accent:#6aa0ff;
       --ok:#3fbf76; --warn:#ffb454; --danger:#ff6b6b;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0b0f14,#0f1520);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    header{padding:20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:rgba(0,0,0,.25);backdrop-filter: blur(8px);position:sticky;top:0;z-index:2}
-    h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px}
-    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .btn{appearance:none;border:1px solid transparent;background:var(--muted);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:600}
-    .btn:hover{border-color:#2a3446}
-    .btn.primary{background:var(--accent);color:#081221}
-    .btn.ghost{background:transparent;border-color:#2a3446}
-    .btn.danger{background:transparent;border-color:var(--danger);color:var(--danger)}
-    input[type="text"], input[type="url"], input[type="number"], input[type="file"], select{background:#0f1520;border:1px solid #2a3446;color:var(--text);padding:10px 12px;border-radius:10px;min-width:160px}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab{padding:8px 12px;border-radius:999px;border:1px solid #2a3446;cursor:pointer;background:#0f1520;color:var(--sub);font-weight:600}
-    .tab.active{background:var(--accent);color:#071021;border-color:transparent}
-    main{padding:20px;max-width:1200px;margin:0 auto}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-    .card{background:var(--panel);border:1px solid #222c3b;border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
-    .thumb{aspect-ratio:16/10;background:#0d1320;display:block}
-    .meta{padding:12px}
-    .name{font-weight:700;margin:0 0 6px}
-    .cat{display:inline-block;font-size:12px;color:#9fb0c9;border:1px solid #2a3446;border-radius:999px;padding:2px 8px;margin-bottom:8px}
-    .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
-    .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#0f1520;border:1px solid #2a3446;color:#c9d5ea}
-    .actions{display:flex;gap:6px;flex-wrap:wrap}
-    .qty{display:inline-flex;align-items:center;gap:6px}
-    .qty button{padding:6px 10px;border-radius:10px;border:1px solid #2a3446;background:#0f1520;color:var(--text);cursor:pointer}
-    .qty button:hover{border-color:#3a4760}
-    .qty .val{padding:4px 8px;border-radius:8px;background:#0f1520;border:1px solid #2a3446;cursor:pointer}
-    .empty{opacity:.8;border:1px dashed #2a3446;padding:16px;border-radius:12px;text-align:center;margin-top:12px}
-    details{background:#0f1520;border:1px solid #2a3446;border-radius:12px;padding:8px 12px}
-    summary{cursor:pointer;font-weight:700;margin:4px 0}
-    .footer{opacity:.7;font-size:12px;margin-top:18px}
-    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #2a3446;border-radius:10px;background:#0f1520}
-    .list{display:flex;flex-direction:column;gap:8px}
-    .list-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#0f1520;border:1px solid #2a3446;border-radius:10px;padding:8px 10px}
-    .hidden{display:none}
-    .hint{font-size:12px;color:#9fb0c9}
+    * { box-sizing:border-box }
+    body {
+      margin: 0;
+      padding-top: 60px; /* Justér denne til din header-højde */
+      background: linear-gradient(180deg,#0b0f14,#0f1520);
+      color: var(--text);
+      font: 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    }
+
+    header {
+      padding: 20px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,.25);
+      backdrop-filter: blur(8px);
+
+      /* Flyt header til fixed så vi kan animere den væk */
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+
+      transition: transform 0.3s ease;
+    }
+    /* Klasse der skubber headeren op af skærmen */
+    header.hidden-on-scroll {
+      transform: translateY(-100%);
+    }
+
+    h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .2px }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
+    .btn { appearance: none; border: 1px solid transparent; background: var(--muted); color: var(--text); padding: 10px 12px; border-radius: 12px; cursor: pointer; font-weight: 600 }
+    .btn:hover { border-color: #2a3446 }
+    .btn.primary { background: var(--accent); color: #081221 }
+    .btn.ghost { background: transparent; border-color: #2a3446 }
+    .btn.danger { background: transparent; border-color: var(--danger); color: var(--danger) }
+    input[type="text"], input[type="url"], input[type="number"], input[type="file"], select {
+      background: #0f1520; border: 1px solid #2a3446; color: var(--text); padding: 10px 12px; border-radius: 10px; min-width: 160px
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap }
+    .tab { padding: 8px 12px; border-radius: 999px; border: 1px solid #2a3446; cursor: pointer; background: #0f1520; color: var(--sub); font-weight: 600 }
+    .tab.active { background: var(--accent); color: #071021; border-color: transparent }
+    main { padding: 20px; max-width: 1200px; margin: 0 auto }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 14px }
+    .card { background: var(--panel); border: 1px solid #222c3b; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column }
+    .thumb { aspect-ratio: 16/10; background: #0d1320; display: block }
+    .meta { padding: 12px }
+    .name { font-weight: 700; margin: 0 0 6px }
+    .cat { display: inline-block; font-size: 12px; color: #9fb0c9; border: 1px solid #2a3446; border-radius: 999px; padding: 2px 8px; margin-bottom: 8px }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px }
+    .pill { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #0f1520; border: 1px solid #2a3446; color: #c9d5ea }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap }
+    .qty { display: inline-flex; align-items: center; gap: 6px }
+    .qty button { padding: 6px 10px; border-radius: 10px; border: 1px solid #2a3446; background: #0f1520; color: var(--text); cursor: pointer }
+    .qty button:hover { border-color: #3a4760 }
+    .qty .val { padding: 4px 8px; border-radius: 8px; background: #0f1520; border: 1px solid #2a3446; cursor: pointer }
+    .empty { opacity: .8; border: 1px dashed #2a3446; padding: 16px; border-radius: 12px; text-align: center; margin-top: 12px }
+    details { background: #0f1520; border: 1px solid #2a3446; border-radius: 12px; padding: 8px 12px }
+    summary { cursor: pointer; font-weight: 700; margin: 4px 0 }
+    .footer { opacity: .7; font-size: 12px; margin-top: 18px }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #2a3446; border-radius: 10px; background: #0f1520 }
+    .list { display: flex; flex-direction: column; gap: 8px }
+    .list-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #0f1520; border: 1px solid #2a3446; border-radius: 10px; padding: 8px 10px }
+    .hidden { display: none }
+    .hint { font-size: 12px; color: #9fb0c9 }
   </style>
 </head>
 <body>
@@ -85,7 +117,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
     import { getDatabase, ref, onValue, set, push, update, remove } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
-    const cfg = { apiKey:"...", authDomain:"bordfodbolddtu.firebaseapp.com", databaseURL:"https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app", projectId:"bordfodbolddtu", storageBucket:"bordfodbolddtu.firebasestorage.app", messagingSenderId:"993863941891", appId:"1:993863941891:web:24c5c2408d254ad6d0f336" };
+    const cfg = { apiKey:"...", authDomain:"bordfodbolddtu.firebaseapp.com", databaseURL:"https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app", projectId:"bordfodbolddtu", storageBucket:"bordfodbolddtu.firebasedatabase.app", messagingSenderId:"993863941891", appId:"1:993863941891:web:24c5c2408d254ad6d0f336" };
     const app = initializeApp(cfg); const db = getDatabase(app);
     let items = {};
     const tabsEl = document.getElementById('tabs'), cardsEl = document.getElementById('cards');
@@ -115,7 +147,6 @@
         const meta=document.createElement('div'); meta.className='meta';
         const nameEl=document.createElement('div'); nameEl.className='name'; nameEl.textContent=it.name;
         const catEl=document.createElement('span'); catEl.className='cat'; catEl.textContent=it.cat;
-        // stock row
         const rowStock=document.createElement('div'); rowStock.className='row';
         const leftStock=document.createElement('div'); leftStock.className='qty';
         const minus=document.createElement('button'); minus.textContent='–'; minus.onclick=()=>changeStock(it,-it.step||-1);
@@ -125,7 +156,6 @@
         leftStock.append(minus,val,plus);
         const soldEl=document.createElement('div'); soldEl.className='pill'; soldEl.textContent=`Solgt (periode): ${it.sold||0}`;
         rowStock.append(leftStock,soldEl);
-        // actions
         const rowAct=document.createElement('div'); rowAct.className='row';
         const actDiv=document.createElement('div'); actDiv.className='actions';
         const btnImg=document.createElement('button'); btnImg.className='btn ghost'; btnImg.textContent='Skift billede'; btnImg.onclick=()=>{ const url=prompt('Billede-URL:',it.img||''); if(url!==null) update(ref(db,`inventory/${it.id}`),{img:url.trim()}); };
@@ -137,12 +167,10 @@
       });
     }
     function changeStock(it,delta){ const newStock=Math.max(0,+( (it.stock||0)+delta ).toFixed(3)); update(ref(db,`inventory/${it.id}`),{stock:newStock}); }
-    // CSV import
     const CSV_HEADER=["dato","varenr","varenavn","kategori","antalsolgt","nettooms","moms","bruttooms"];
     csvInput.addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; const text=await file.text(); applyCSV(text,cbDeduct.checked); csvInput.value=''; });
     function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').split('\n').filter(l=>l.trim()); const rows=[]; for(const line of lines){ const out=[]; let cur='',inQ=false; for(const ch of line){ if(ch==='\"'){inQ=!inQ; continue;} if(ch===';'&&!inQ){ out.push(cur); cur=''; continue;} cur+=ch;} out.push(cur); rows.push(out);} return rows; }
     async function applyCSV(txt,deduct){ const rows=parseCSV(txt); if(!rows.length){ alert('CSV tom'); return;} const header=rows[0].map(h=>h.trim().toLowerCase()); if(!CSV_HEADER.every((h,i)=>header[i]===h)){ if(!confirm('Header matcher ikke. Fortsæt?')) return;} const sums=new Map(); for(let i=1;i<rows.length;i++){ const r=rows[i]; if(r.length<5) continue; const name=r[2].trim(); const qty=Number(r[4].replace(/\./g,'').replace(',','.')); if(!name||!isFinite(qty)) continue; sums.set(name,(sums.get(name)||0)+qty);} const unmatched=[];
-      // batch update
       sums.forEach((qty,csvName)=>{
         const canon=aliasToCanonical(csvName)||csvName;
         const entry=Object.values(items).find(it=>normalizeName(it.name)===normalizeName(canon));
@@ -158,18 +186,25 @@
         const step=document.createElement('input'); step.type='number'; step.step='0.25'; step.min='0.01'; step.placeholder='Trin'; step.style.width='100px';
         const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Tilføj'; btn.onclick=()=>{ const newId=id(); const entry={id:newId,name:u.name,cat:sel.value,img:'',sold:u.sold,stock:0,unit:unit.value||'stk',step:Math.max(0.01,Number(step.value||1))}; set(ref(db,`inventory/${newId}`),entry); row.remove(); if(!unmatchedList.children.length) unmatchedSection.classList.add('hidden'); };
         right.append(sel,unit,step,btn); row.append(left,right); unmatchedList.append(row); }); }
-    // JSON import/export
-    jsonInput.addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; try{ const txt=await file.text(); const data=JSON.parse(txt); if(!Array.isArray(data.items)) throw new Error(); // clear existing
-        set(ref(db,'inventory'),{});
-        data.items.forEach(x=>{ const newId=x.id||id(); const entry={id:newId,name:x.name,cat:x.cat,img:x.img||'',sold:0,stock:x.stock||0,unit:x.unit||'',step:x.step||1}; set(ref(db,`inventory/${newId}`),entry); }); alert(`Importeret ${data.items.length} varer`);
-      }catch(err){ alert('Kunne ikke importere JSON: '+err.message);} finally{ jsonInput.value=''; } });
+    jsonInput.addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; try{ const txt=await file.text(); const data=JSON.parse(txt); if(!Array.isArray(data.items)) throw new Error(); set(ref(db,'inventory'),{}); data.items.forEach(x=>{ const newId=x.id||id(); const entry={id:newId,name:x.name,cat:x.cat,img:x.img||'',sold:0,stock:x.stock||0,unit:x.unit||'',step:x.step||1}; set(ref(db,`inventory/${newId}`),entry); }); alert(`Importeret ${data.items.length} varer`); }catch(err){ alert('Kunne ikke importere JSON: '+err.message);} finally{ jsonInput.value=''; } });
     exportJSONBtn.addEventListener('click',()=>{ const data={items:Object.values(items)}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventar_export.json'; a.click(); URL.revokeObjectURL(a.href); });
-    // Reset
     resetSalesBtn.addEventListener('click',()=>{ if(!confirm('Nulstil solgt for alle?')) return; Object.values(items).forEach(it=> update(ref(db,`inventory/${it.id}`),{sold:0})); });
-    // Download template
     downloadTplBtn.addEventListener('click',()=>{ const tpl=['Dato;Varenr;Varenavn;Kategori;AntalSolgt;NettoOms;Moms;BruttoOms','2025-08-01;P001;Lille popcorn;Snacks;8;240,00;60,00;300,00','2025-08-01;D021;Pepsi Max 0,5L;Sodavand;5;76,00;19,00;95,00'].join('\n'); const blob=new Blob([tpl],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kiosk_eksempel.csv'; a.click(); URL.revokeObjectURL(a.href); });
+    // Scroll-hide header
+    let lastScrollY = window.pageYOffset || 0;
+    const headerEl = document.querySelector('header');
+    window.addEventListener('scroll', () => {
+      const currentY = window.pageYOffset || 0;
+      if (currentY > lastScrollY) {
+        headerEl.classList.add('hidden-on-scroll');
+      } else {
+        headerEl.classList.remove('hidden-on-scroll');
+      }
+      lastScrollY = currentY;
+    });
     // init
-    render(); renderUnmatched([]);
+    render();
+    renderUnmatched([]);
   </script>
 </body>
 </html>
