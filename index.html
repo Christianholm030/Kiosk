@@ -1,444 +1,175 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="da">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Table‑Soccer ELO Hub (Realtime DB)</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiosk — Inventarliste (med Firebase, tabs, CSV & JSON)</title>
   <style>
-    body { background: #f3f4f6; color: #1f2937; }
-    .badge { display:inline-block; padding:2px 6px; border-radius:4px; font-size:.75rem; margin:2px; }
-    .badge.locked { background:#d1d5db; color:#6b7280; }
-    .badge.unlocked { background:#34d399; color:#065f46; }
-    .stat-tile { background:white; padding:1rem; border-radius:.5rem; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    .table-header { background:#e5e7eb; }
-    .action-btn { background:transparent; }
+    :root {
+      --bg:#0b0f14; --panel:#121821; --muted:#1b2431; --text:#e9eef7; --sub:#b8c3d6; --accent:#6aa0ff;
+      --ok:#3fbf76; --warn:#ffb454; --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b0f14,#0f1520);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    header{padding:20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:rgba(0,0,0,.25);backdrop-filter: blur(8px);position:sticky;top:0;z-index:2}
+    h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.2px}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{appearance:none;border:1px solid transparent;background:var(--muted);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:600}
+    .btn:hover{border-color:#2a3446}
+    .btn.primary{background:var(--accent);color:#081221}
+    .btn.ghost{background:transparent;border-color:#2a3446}
+    .btn.danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+    input[type="text"], input[type="url"], input[type="number"], input[type="file"], select{background:#0f1520;border:1px solid #2a3446;color:var(--text);padding:10px 12px;border-radius:10px;min-width:160px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 12px;border-radius:999px;border:1px solid #2a3446;cursor:pointer;background:#0f1520;color:var(--sub);font-weight:600}
+    .tab.active{background:var(--accent);color:#071021;border-color:transparent}
+    main{padding:20px;max-width:1200px;margin:0 auto}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+    .card{background:var(--panel);border:1px solid #222c3b;border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+    .thumb{aspect-ratio:16/10;background:#0d1320;display:block}
+    .meta{padding:12px}
+    .name{font-weight:700;margin:0 0 6px}
+    .cat{display:inline-block;font-size:12px;color:#9fb0c9;border:1px solid #2a3446;border-radius:999px;padding:2px 8px;margin-bottom:8px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+    .pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#0f1520;border:1px solid #2a3446;color:#c9d5ea}
+    .actions{display:flex;gap:6px;flex-wrap:wrap}
+    .qty{display:inline-flex;align-items:center;gap:6px}
+    .qty button{padding:6px 10px;border-radius:10px;border:1px solid #2a3446;background:#0f1520;color:var(--text);cursor:pointer}
+    .qty button:hover{border-color:#3a4760}
+    .qty .val{padding:4px 8px;border-radius:8px;background:#0f1520;border:1px solid #2a3446;cursor:pointer}
+    .empty{opacity:.8;border:1px dashed #2a3446;padding:16px;border-radius:12px;text-align:center;margin-top:12px}
+    details{background:#0f1520;border:1px solid #2a3446;border-radius:12px;padding:8px 12px}
+    summary{cursor:pointer;font-weight:700;margin:4px 0}
+    .footer{opacity:.7;font-size:12px;margin-top:18px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #2a3446;border-radius:10px;background:#0f1520}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .list-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#0f1520;border:1px solid #2a3446;border-radius:10px;padding:8px 10px}
+    .hidden{display:none}
+    .hint{font-size:12px;color:#9fb0c9}
   </style>
 </head>
-<body class="flex flex-col min-h-screen">
-
-  <!-- HEADER -->
-  <header class="bg-white shadow sticky top-0 z-10">
-    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="text-2xl font-bold">Table‑Soccer ELO</div>
-      <nav class="space-x-6">
-        <button data-target="dashboard"   class="nav-btn text-blue-600 font-medium">Dashboard</button>
-        <button data-target="players"     class="nav-btn text-gray-700 hover:text-blue-600">Players</button>
-        <button data-target="matches"     class="nav-btn text-gray-700 hover:text-blue-600">Matches</button>
-        <button data-target="leaderboard" class="nav-btn text-gray-700 hover:text-blue-600">Leaderboard</button>
-        <button data-target="achievements"class="nav-btn text-gray-700 hover:text-blue-600">Achievements</button>
-        <button data-target="stats"       class="nav-btn text-gray-700 hover:text-blue-600">Stats</button>
-      </nav>
+<body>
+  <header>
+    <h1>Inventarliste (kiosk)</h1>
+    <div class="controls">
+      <label class="badge"><span>Upload CSV</span><input id="csvInput" type="file" accept=".csv,text/csv"></label>
+      <label class="badge"><input id="cbDeduct" type="checkbox" checked /><span>Fratræk salg fra lager ved upload</span></label>
+      <label class="badge"><span>Importér varer (JSON)</span><input id="jsonInput" type="file" accept="application/json"></label>
+      <button class="btn" id="exportJSON">Eksportér varer (JSON)</button>
+      <button class="btn ghost" id="downloadTemplate">Hent CSV-skabelon</button>
+      <button class="btn" id="resetSales">Nulstil solgt</button>
+      <details><summary>Tilføj vare</summary>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <input id="newName" type="text" placeholder="Varenavn" />
+          <select id="newCat"><option>Sodavand & Drikke</option><option>Slik</option><option>Chokolade & Barer</option><option>Chips & Snacks</option><option>Popcorn</option><option>Phantom (udstyr)</option><option>Mad & Kaffen</option><option>Service & Andet</option><option>Pladsen</option><option>Rengøring</option></select>
+          <input id="newImg" type="url" placeholder="Billede-URL (valgfrit)" />
+          <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
+          <input id="newUnit" type="text" placeholder="Enhed" />
+          <input id="newStep" type="number" step="0.25" min="0.25" placeholder="Trin" />
+          <button class="btn primary" id="addItem">Tilføj</button>
+        </div>
+      </details>
     </div>
   </header>
-
-  <!-- MAIN -->
-  <main class="container mx-auto px-6 py-8 flex-grow space-y-8">
-
-    <!-- Dashboard -->
-    <section id="dashboard" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Dashboard</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
-          <div class="text-gray-500">Total Players</div>
-          <div class="text-3xl font-bold" id="totalPlayers">0</div>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
-          <div class="text-gray-500">Matches This Week</div>
-          <div class="text-3xl font-bold" id="matchesWeek">0</div>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
-          <div class="text-gray-500">Average ELO</div>
-          <div class="text-3xl font-bold" id="averageElo">0</div>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow hover:shadow-md transition">
-          <div class="text-gray-500">Pending Achievements</div>
-          <div class="text-3xl font-bold" id="pendingAch">0</div>
-        </div>
-      </div>
+  <main>
+    <div class="tabs" id="tabs"></div>
+    <div class="grid" id="cards"></div>
+    <section id="unmatchedSection" class="hidden" style="margin-top:22px">
+      <h3>Ikke matchede varer fra CSV</h3><div class="list" id="unmatchedList"></div>
+      <p class="footer">Tip: Klik “Tilføj” ud for en vare for at oprette den i inventarlisten. Derefter kan du uploade CSV igen.</p>
     </section>
-
-    <!-- Players -->
-    <section id="players" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Players</h2>
-      <div class="flex space-x-3 mb-4">
-        <input id="newName" class="border p-3 rounded-lg flex-grow" placeholder="Name"/>
-        <input id="newElo" type="number" class="border p-3 rounded-lg w-28" value="100"/>
-        <button id="addPlayer" class="bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-lg transition">Add Player</button>
-      </div>
-      <input id="playerSearch" class="border p-3 rounded-lg mb-4 w-full" placeholder="Search players..."/>
-      <div class="overflow-x-auto bg-white rounded-lg shadow">
-        <table class="w-full table-auto">
-          <thead class="table-header">
-            <tr>
-              <th class="p-3 text-left">Name</th>
-              <th class="p-3 text-center">ELO</th>
-              <th class="p-3 text-center">Matches</th>
-              <th class="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="playerTable"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Matches -->
-    <section id="matches" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Matches</h2>
-      <div class="mb-6">
-        <button data-mode="1v1" class="mode-btn bg-blue-500 text-white px-4 py-2 rounded-lg mr-2">1v1</button>
-        <button data-mode="2v2" class="mode-btn bg-gray-300 text-gray-700 px-4 py-2 rounded-lg">2v2</button>
-      </div>
-      <div id="form1v1" class="match-form space-y-4">
-        <div class="flex space-x-3">
-          <select id="selA1" class="border p-3 rounded-lg flex-grow"></select>
-          <select id="selB1" class="border p-3 rounded-lg flex-grow"></select>
-        </div>
-        <div class="flex space-x-3">
-          <input id="scoreA1" type="number" class="border p-3 rounded-lg w-32" placeholder="Score A"/>
-          <input id="scoreB1" type="number" class="border p-3 rounded-lg w-32" placeholder="Score B"/>
-        </div>
-        <button id="reg1v1" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition">Register Match</button>
-      </div>
-      <div id="form2v2" class="match-form hidden space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <select id="selA21" class="border p-3 rounded-lg"></select>
-          <select id="selA22" class="border p-3 rounded-lg"></select>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <select id="selB21" class="border p-3 rounded-lg"></select>
-          <select id="selB22" class="border p-3 rounded-lg"></select>
-        </div>
-        <div class="flex space-x-3">
-          <input id="scoreA2" type="number" class="border p-3 rounded-lg w-32" placeholder="Score A"/>
-          <input id="scoreB2" type="number" class="border p-3 rounded-lg w-32" placeholder="Score B"/>
-        </div>
-        <button id="reg2v2" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition">Register 2v2</button>
-      </div>
-    </section>
-
-    <!-- Leaderboard -->
-    <section id="leaderboard" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Leaderboard</h2>
-      <input id="lbSearch" class="border p-3 rounded-lg mb-4 w-full" placeholder="Search leaderboard..."/>
-      <div class="overflow-x-auto bg-white rounded-lg shadow">
-        <table class="w-full table-auto">
-          <thead class="table-header">
-            <tr>
-              <th class="p-3">#</th>
-              <th class="p-3 text-left">Name</th>
-              <th class="p-3 text-center">ELO</th>
-            </tr>
-          </thead>
-          <tbody id="lbTable"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Achievements -->
-    <section id="achievements" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Achievements</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        <!-- cards... -->
-      </div>
-    </section>
-
-    <!-- Stats -->
-    <section id="stats" class="hidden">
-      <h2 class="text-2xl mb-6 font-semibold">Player Stats & Achievements</h2>
-      <select id="statsPlayerSelect" class="border p-3 rounded-lg mb-4">
-        <option value="">Select player</option>
-      </select>
-      <div id="profile" class="space-y-6"></div>
-    </section>
-
+    <section style="margin-top:22px"><details><summary>CSV-format</summary>
+      <div class="footer">Forventet header (semikolon):<br><code>Dato;Varenr;Varenavn;Kategori;AntalSolgt;NettoOms;Moms;BruttoOms</code></div>
+    </details></section>
   </main>
-
-  <!-- FOOTER -->
-  <footer class="bg-white shadow text-center py-4">
-    &copy; 2025 Table‑Soccer ELO • v1.0 • <a href="#" class="text-blue-600 hover:underline">Support</a>
-  </footer>
-
-  <!-- Firebase + App Logic -->
   <script type="module">
-    import { initializeApp }   from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase,
-             ref,
-             onValue,
-             push,
-             update }          from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
-
-    // Firebase init
-    const cfg = {
-      apiKey: "...",
-      authDomain: "bordfodbolddtu.firebaseapp.com",
-      databaseURL: "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "bordfodbolddtu",
-      storageBucket: "bordfodbolddtu.firebasestorage.app",
-      messagingSenderId: "993863941891",
-      appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
-    };
-    const app = initializeApp(cfg), db = getDatabase(app);
-
-    // In-memory
-    let players = {}, matches = {};
-
-    // Realtime listeners
-    onValue(ref(db,'players'), snap=>{ players = snap.val()||{}; rerender() });
-    onValue(ref(db,'matches'), snap=>{ matches = snap.val()||{}; rerender() });
-
-    // ELO helpers
-    const expectedScore = (a,b)=>1/(1+10**((b-a)/400));
-    const dynamicK      = d=>32*(1+0.05*d);
-
-    // Compute stats for profile
-    function computePlayerData(p){
-      const total = (p.wins||0)+(p.draws||0)+(p.losses||0);
-      const winPct = total?Math.round(p.wins/total*100):0;
-      const goalMargin = total?(((p.goalsFor||0)-(p.goalsAgainst||0))/total).toFixed(1):'0.0';
-      const now = Date.now();
-      const weekCount = Object.values(matches)
-        .filter(m=>m.playerIds?.includes(p.id)&&m.date>now-7*864e5).length;
-      const hist = Object.entries(p.history||{})
-        .sort((a,b)=>a[0]-b[0]).map(x=>x[1]).slice(-20);
-      const upsets = Object.values(matches)
-        .filter(m=>m.winnerId===p.id&&(m.eloBeforeOpponent-m.eloBeforeSelf)>=200)
-        .length;
-      return {
-        winPct, goalMargin,
-        curStreak: p.currentStreak||0,
-        maxStreak: p.maxStreak||0,
-        cleanSheets: p.cleanSheets||0,
-        weekCount, spark: hist, upsets, total
-      };
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import { getDatabase, ref, onValue, set, push, update, remove } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    const cfg = { apiKey:"...", authDomain:"bordfodbolddtu.firebaseapp.com", databaseURL:"https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app", projectId:"bordfodbolddtu", storageBucket:"bordfodbolddtu.firebasestorage.app", messagingSenderId:"993863941891", appId:"1:993863941891:web:24c5c2408d254ad6d0f336" };
+    const app = initializeApp(cfg); const db = getDatabase(app);
+    let items = {};
+    const tabsEl = document.getElementById('tabs'), cardsEl = document.getElementById('cards');
+    const csvInput = document.getElementById('csvInput'), jsonInput = document.getElementById('jsonInput');
+    const exportJSONBtn = document.getElementById('exportJSON'), resetSalesBtn = document.getElementById('resetSales');
+    const addItemBtn = document.getElementById('addItem'), downloadTplBtn = document.getElementById('downloadTemplate');
+    const unmatchedSection = document.getElementById('unmatchedSection'), unmatchedList = document.getElementById('unmatchedList');
+    const cbDeduct = document.getElementById('cbDeduct');
+    const CATS = ["Alle","Sodavand & Drikke","Slik","Chokolade & Barer","Chips & Snacks","Popcorn","Phantom (udstyr)","Mad & Kaffen","Service & Andet","Pladsen","Rengøring"];
+    let activeCat = "Alle";
+    // Firebase listener
+    onValue(ref(db,'inventory'), snap=>{ items = snap.val()||{}; render(); renderUnmatched([]); });
+    // Utils
+    function id(){ return push(ref(db,'inventory')).key; }
+    function normalizeName(s){ return (s||"").normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[,.;:\/()\-]/g,' ').replace(/\s+/g,' ').trim(); }
+    function aliasToCanonical(v){ const n=normalizeName(v); if(n.includes('pepsi max')) return 'Pepsi Max 0,5L'; if(n.includes('guldbams')) return 'Haribo Guldbamser'; if(n.includes('popcorn')) return 'Mellem popcorn'; return null; }
+    function catEmoji(c){ if(c.includes('Sodavand')) return '🥤'; if(c.includes('Popcorn')) return '🍿'; if(c.includes('Slik')) return '🍬'; if(c.includes('Barer')) return '🍫'; return '📦'; }
+    function placeholderSVG(text,emoji){ const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='640' height='400'><defs><linearGradient id='g'x1='0'y1='0'x2='1'y2='1'><stop offset='0%' stop-color='#0f1a2a'/><stop offset='100%' stop-color='#1b2b45'/></linearGradient></defs><rect width='100%'height='100%' fill='url(#g)'/><text x='50%'y='48%'dominant-baseline='middle'text-anchor='middle'font-family='system-ui'font-size='90'fill='#cfe1ff'opacity='0.9'>${emoji}</text><text x='50%'y='75%'dominant-baseline='middle'text-anchor='middle'font-family='system-ui'font-size='28'fill='#cfe1ff'opacity='0.9'>${text}</text></svg>`; return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg); }
+    // Render
+    function render(){ renderTabs(); renderCards(); }
+    function renderTabs(){ tabsEl.innerHTML=''; CATS.forEach(cat=>{ const b=document.createElement('button'); b.className='tab'+(cat===activeCat?' active':''); b.textContent=cat; b.onclick=()=>{activeCat=cat; render()}; tabsEl.appendChild(b); }); }
+    function renderCards(){ cardsEl.innerHTML=''; const arr=Object.values(items).filter(it=>activeCat==='Alle'||it.cat===activeCat);
+      if(!arr.length){ cardsEl.innerHTML='<div class="empty">Ingen varer i denne kategori endnu.</div>'; return; }
+      arr.forEach(it=>{
+        const card=document.createElement('div'); card.className='card';
+        const img=document.createElement('img'); img.className='thumb'; img.src=it.img||placeholderSVG(it.name,catEmoji(it.cat)); img.alt=it.name;
+        const meta=document.createElement('div'); meta.className='meta';
+        const nameEl=document.createElement('div'); nameEl.className='name'; nameEl.textContent=it.name;
+        const catEl=document.createElement('span'); catEl.className='cat'; catEl.textContent=it.cat;
+        // stock row
+        const rowStock=document.createElement('div'); rowStock.className='row';
+        const leftStock=document.createElement('div'); leftStock.className='qty';
+        const minus=document.createElement('button'); minus.textContent='–'; minus.onclick=()=>changeStock(it,-it.step||-1);
+        const val=document.createElement('span'); val.className='val'; val.title='Klik for at redigere'; val.textContent=`På lager: ${(it.stock||0).toString().replace('.',',')} ${it.unit||''}`;
+        val.onclick=()=>{ const n=prompt(`Indstil lager for "${it.name}"`,String(it.stock||0)); if(n!==null){ const v=Math.max(0,Number(n.replace(',','.'))); update(ref(db,`inventory/${it.id}`),{stock:v}); }};
+        const plus=document.createElement('button'); plus.textContent='+'; plus.onclick=()=>changeStock(it,it.step||1);
+        leftStock.append(minus,val,plus);
+        const soldEl=document.createElement('div'); soldEl.className='pill'; soldEl.textContent=`Solgt (periode): ${it.sold||0}`;
+        rowStock.append(leftStock,soldEl);
+        // actions
+        const rowAct=document.createElement('div'); rowAct.className='row';
+        const actDiv=document.createElement('div'); actDiv.className='actions';
+        const btnImg=document.createElement('button'); btnImg.className='btn ghost'; btnImg.textContent='Skift billede'; btnImg.onclick=()=>{ const url=prompt('Billede-URL:',it.img||''); if(url!==null) update(ref(db,`inventory/${it.id}`),{img:url.trim()}); };
+        const btnUnit=document.createElement('button'); btnUnit.className='btn ghost'; btnUnit.textContent='Enhed/trin'; btnUnit.onclick=()=>{ const u=prompt('Enhed:',it.unit||''); if(u===null) return; const s=prompt('Trin:',String(it.step||1)); if(s===null)return; update(ref(db,`inventory/${it.id}`),{unit:u.trim(),step:Math.max(0.01,Number(s.replace(',','.')))}); };
+        const btnDel=document.createElement('button'); btnDel.className='btn danger'; btnDel.textContent='Fjern'; btnDel.onclick=()=>{ if(confirm(`Fjern ${it.name}?`)) remove(ref(db,`inventory/${it.id}`)); };
+        actDiv.append(btnImg,btnUnit,btnDel); rowAct.append(document.createElement('div'),actDiv);
+        meta.append(nameEl,catEl,rowStock,rowAct);
+        card.append(img,meta); cardsEl.append(card);
+      });
     }
-
-    // Render everything
-    function rerender(){
-      const pArr = Object.values(players),
-            mArr = Object.values(matches);
-
-      // Dashboard
-      document.getElementById('totalPlayers').textContent = pArr.length;
-      document.getElementById('matchesWeek').textContent = mArr.filter(m=>m.date>Date.now()-7*864e5).length;
-      document.getElementById('averageElo').textContent = pArr.length
-        ?Math.round(pArr.reduce((s,p)=>s+p.elo,0)/pArr.length):0;
-      document.getElementById('pendingAch').textContent = 0;
-
-      // Players table
-      const pf = document.getElementById('playerSearch').value.toLowerCase();
-      const tbodyP = document.getElementById('playerTable');
-      tbodyP.innerHTML = '';
-      pArr.filter(p=>p.name.toLowerCase().includes(pf)).forEach(p=>{
-        const matchesCount = (p.wins||0)+(p.draws||0)+(p.losses||0);
-        tbodyP.insertAdjacentHTML('beforeend',`
-          <tr class="hover:bg-gray-50 transition">
-            <td class="p-3">${p.name}</td>
-            <td class="p-3 text-center">${p.elo}</td>
-            <td class="p-3 text-center">${matchesCount}</td>
-            <td class="p-3 text-center">
-              <button class="action-btn text-red-500 hover:text-red-700"
-                      onclick="deletePlayer('${p.id}')">🗑️</button>
-            </td>
-          </tr>
-        `);
-      });
-
-      // Leaderboard
-      const lf = document.getElementById('lbSearch').value.toLowerCase();
-      const tbodyL = document.getElementById('lbTable');
-      tbodyL.innerHTML = '';
-      pArr.filter(p=>p.name.toLowerCase().includes(lf))
-          .sort((a,b)=>b.elo-a.elo)
-          .forEach((p,i)=>{
-        tbodyL.insertAdjacentHTML('beforeend',`
-          <tr class="hover:bg-gray-50 transition">
-            <td class="p-3">${i+1}</td>
-            <td class="p-3">${p.name}</td>
-            <td class="p-3 text-center">${p.elo}</td>
-          </tr>`);
-      });
-
-      // Populate all selects
-      ['selA1','selB1','selA21','selA22','selB21','selB22','statsPlayerSelect']
-        .forEach(id=>{
-          const sel = document.getElementById(id);
-          sel.innerHTML = id==='statsPlayerSelect'
-            ? '<option value="">Select player</option>'
-            : '<option value="">--</option>';
-          pArr.forEach((p,i)=>{
-            sel.insertAdjacentHTML('beforeend',
-              `<option value="${i}">${p.name} (${p.elo})</option>`);
-          });
-        });
+    function changeStock(it,delta){ const newStock=Math.max(0,+( (it.stock||0)+delta ).toFixed(3)); update(ref(db,`inventory/${it.id}`),{stock:newStock}); }
+    // CSV import
+    const CSV_HEADER=["dato","varenr","varenavn","kategori","antalsolgt","nettooms","moms","bruttooms"];
+    csvInput.addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; const text=await file.text(); applyCSV(text,cbDeduct.checked); csvInput.value=''; });
+    function parseCSV(text){ const lines=text.replace(/\r\n/g,'\n').split('\n').filter(l=>l.trim()); const rows=[]; for(const line of lines){ const out=[]; let cur='',inQ=false; for(const ch of line){ if(ch==='\"'){inQ=!inQ; continue;} if(ch===';'&&!inQ){ out.push(cur); cur=''; continue;} cur+=ch;} out.push(cur); rows.push(out);} return rows; }
+    async function applyCSV(txt,deduct){ const rows=parseCSV(txt); if(!rows.length){ alert('CSV tom'); return;} const header=rows[0].map(h=>h.trim().toLowerCase()); if(!CSV_HEADER.every((h,i)=>header[i]===h)){ if(!confirm('Header matcher ikke. Fortsæt?')) return;} const sums=new Map(); for(let i=1;i<rows.length;i++){ const r=rows[i]; if(r.length<5) continue; const name=r[2].trim(); const qty=Number(r[4].replace(/\./g,'').replace(',','.')); if(!name||!isFinite(qty)) continue; sums.set(name,(sums.get(name)||0)+qty);} const unmatched=[];
+      // batch update
+      sums.forEach((qty,csvName)=>{
+        const canon=aliasToCanonical(csvName)||csvName;
+        const entry=Object.values(items).find(it=>normalizeName(it.name)===normalizeName(canon));
+        if(entry){ const soldNew=(entry.sold||0)+qty; const stockNew=deduct?Math.max(0,(entry.stock||0)-qty):entry.stock||0; update(ref(db,`inventory/${entry.id}`),{sold:soldNew,stock:stockNew}); }
+        else unmatched.push({name:csvName,sold:qty});
+      }); renderUnmatched(unmatched);
     }
-
-    // Delete a player
-    window.deletePlayer = id => {
-      if(!confirm('Delete this player? This cannot be undone.')) return;
-      update(ref(db), { ['players/'+id]: null });
-    };
-
-    // TAB NAV
-    const navBtns = document.querySelectorAll('.nav-btn'),
-          secs    = document.querySelectorAll('main section');
-    secs.forEach(s=>s.classList.add('hidden'));
-    document.getElementById('dashboard').classList.remove('hidden');
-    navBtns.forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        navBtns.forEach(b=>{
-          b.classList.remove('text-blue-600');
-          b.classList.add('text-gray-700');
-        });
-        btn.classList.remove('text-gray-700');
-        btn.classList.add('text-blue-600');
-        secs.forEach(s=>s.classList.add('hidden'));
-        document.getElementById(btn.dataset.target).classList.remove('hidden');
-      });
-    });
-
-    // MODE TOGGLE
-    document.querySelectorAll('.mode-btn').forEach(b=>{
-      b.addEventListener('click',()=>{
-        document.querySelectorAll('.mode-btn').forEach(x=>{
-          x.classList.replace('bg-blue-500','bg-gray-300');
-          x.classList.replace('text-white','text-gray-700');
-        });
-        b.classList.replace('bg-gray-300','bg-blue-500');
-        b.classList.replace('text-gray-700','text-white');
-        document.querySelectorAll('.match-form').forEach(f=>f.classList.add('hidden'));
-        document.getElementById(b.dataset.mode==='1v1'?'form1v1':'form2v2')
-                .classList.remove('hidden');
-      });
-    });
-
-    // ADD PLAYER
-    document.getElementById('addPlayer').addEventListener('click',()=>{
-      const name = document.getElementById('newName').value.trim();
-      const elo  = parseInt(document.getElementById('newElo').value,10)||100;
-      if(!name) return alert('Please enter a name');
-      const newRef = push(ref(db,'players'));
-      const now    = Date.now();
-      update(ref(db),{
-        ['players/'+newRef.key]: {
-          id:newRef.key, name, elo,
-          wins:0, draws:0, losses:0,
-          goalsFor:0, goalsAgainst:0,
-          currentStreak:0, maxStreak:0,
-          cleanSheets:0,
-          history:{ [now]:elo }
-        }
-      });
-      document.getElementById('newName').value='';
-      document.getElementById('newElo').value='100';
-    });
-
-    // REGISTER 1v1
-    document.getElementById('reg1v1').addEventListener('click',()=>{
-      const ai=+document.getElementById('selA1').value,
-            bi=+document.getElementById('selB1').value;
-      const sA=+document.getElementById('scoreA1').value,
-            sB=+document.getElementById('scoreB1').value;
-      const arr=Object.values(players);
-      if(isNaN(ai)||isNaN(bi)||ai===bi) return alert('Pick two different players');
-      const A={...arr[ai]}, B={...arr[bi]};
-      // stats
-      A.goalsFor+=sA;A.goalsAgainst+=sB;
-      B.goalsFor+=sB;B.goalsAgainst+=sA;
-      let rA=0,rB=0;
-      if(sA>sB){rA=1;A.wins++;B.losses++;A.currentStreak++;B.currentStreak=0;}
-      else if(sB>sA){rB=1;B.wins++;A.losses++;B.currentStreak++;A.currentStreak=0;}
-      else{rA=rB=0.5;A.draws++;B.draws++;A.currentStreak=B.currentStreak=0;}
-      A.maxStreak=Math.max(A.maxStreak,A.currentStreak);
-      B.maxStreak=Math.max(B.maxStreak,B.currentStreak);
-      if(sB===0)A.cleanSheets++;
-      if(sA===0)B.cleanSheets++;
-      // ELO
-      const diff=Math.abs(sA-sB),
-            K=dynamicK(diff),
-            expA=expectedScore(A.elo,B.elo),
-            expB=expectedScore(B.elo,A.elo),
-            newA=Math.round(A.elo+K*(rA-expA)),
-            newB=Math.round(B.elo+K*(rB-expB));
-      const now=Date.now(), upd={};
-      // batch
-      ['elo','wins','losses','draws','goalsFor','goalsAgainst','currentStreak','maxStreak','cleanSheets']
-      .forEach(f=>{
-        upd[`players/${A.id}/${f}`]=A[f];
-        upd[`players/${B.id}/${f}`]=B[f];
-      });
-      upd[`players/${A.id}/elo`]=newA;
-      upd[`players/${B.id}/elo`]=newB;
-      upd[`players/${A.id}/history/${now}`]=newA;
-      upd[`players/${B.id}/history/${now}`]=newB;
-      const mRef=push(ref(db,'matches'));
-      upd[`matches/${mRef.key}`]={
-        id:mRef.key,mode:'1v1',date:now,
-        playerIds:[A.id,B.id],
-        scoreA:sA,scoreB:sB,
-        eloBeforeA:A.elo,eloBeforeB:B.elo,
-        eloBeforeSelf:newA>newB?A.elo:B.elo,
-        eloBeforeOpponent:newA>newB?B.elo:A.elo,
-        winnerId:newA>newB?A.id:newB>newA?B.id:null,
-        loserId:newA>newB?B.id:newB>newA?A.id:null
-      };
-      update(ref(db),upd);
-      ['scoreA1','scoreB1'].forEach(id=>document.getElementById(id).value='');
-    });
-
-    // REGISTER 2v2 (similar, omitted for brevity)...
-
-    // STATS TAB
-    document.getElementById('statsPlayerSelect')
-      .addEventListener('change',()=>{
-      const idx=+document.getElementById('statsPlayerSelect').value;
-      const prof=document.getElementById('profile');
-      prof.innerHTML='';
-      const arr=Object.values(players);
-      if(isNaN(idx))return;
-      const p=arr[idx], d=computePlayerData(p);
-      prof.innerHTML=`
-        <h3 class="text-xl font-semibold mb-4">${p.name} (ELO: ${p.elo})</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <div class="stat-tile">Win %<div class="relative bg-gray-200 h-4 rounded mt-2">
-            <div class="absolute bg-green-500 h-4 rounded" style="width:${d.winPct}%"></div>
-            <div class="absolute inset-0 flex items-center justify-center text-sm">${d.winPct}%</div>
-          </div></div>
-          <div class="stat-tile">Avg Margin<div class="mt-2 font-bold ${d.goalMargin>=0?'text-green-600':'text-red-600'}">
-            ${d.goalMargin}
-          </div></div>
-          <div class="stat-tile">Current Streak<div class="badge ${d.curStreak>0?'unlocked':'locked'} mt-2">
-            ${d.curStreak>0?`W ${d.curStreak}`:`L ${-d.curStreak}`}
-          </div></div>
-          <div class="stat-tile">Longest Streak<div class="badge unlocked mt-2">🏅 ${d.maxStreak}</div></div>
-          <div class="stat-tile">Upsets<div class="mt-2">🏆 ${d.upsets}</div></div>
-          <div class="stat-tile">Sparkline<svg width="100" height="20" class="mt-2">
-            <polyline fill="none" stroke="${d.spark.slice(-1)>=d.spark[0]?'green':'red'}" stroke-width="1"
-              points="${d.spark.map((v,i)=>`${i*5},${20 - ((v - Math.min(...d.spark)) / (Math.max(...d.spark)-Math.min(...d.spark)||1))*20}`).join(' ')}"/>
-          </svg></div>
-          <div class="stat-tile">Clean Sheet<div class="mt-2">${d.total?Math.round(d.cleanSheets/d.total*100):0}%</div></div>
-          <div class="stat-tile">Weekly Matches<div class="mt-2">${d.weekCount}</div></div>
-        </div>
-        <h4 class="text-xl font-semibold mb-4">Achievements</h4>
-        <div class="flex flex-wrap">
-          ${[
-            ['Century Scorer',    p.goalsFor>=100],
-            ['Spotless Defense',  p.cleanSheets>=10],
-            ['Unstoppable Streak',p.maxStreak>=7],
-            ['Marathoner',        d.total>=50],
-            ['ELO Pioneer',       p.elo>=1200],
-            ['Giant Slayer',      d.upsets>=1],
-            ['Team Player',       false],
-            ['Social Butterfly',  false],
-            ['Legendary Run',     false]
-          ].map(([t,ok])=>`<span class="badge ${ok?'unlocked':'locked'}">${t}</span>`).join('')}
-        </div>
-      `;
-    });
-
-    // INIT
-    rerender();
+    function renderUnmatched(arr){ unmatchedList.innerHTML=''; if(!arr.length){ unmatchedSection.classList.add('hidden'); return;} unmatchedSection.classList.remove('hidden'); arr.forEach(u=>{ const row=document.createElement('div'); row.className='list-item';
+        const left=document.createElement('div'); left.innerHTML=`<strong>${u.name}</strong><br><span style="opacity:.8">Solgt: ${u.sold}</span>`;
+        const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+        const sel=document.createElement('select'); CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; sel.appendChild(o); });
+        const unit=document.createElement('input'); unit.type='text'; unit.placeholder='Enhed'; unit.style.width='120px';
+        const step=document.createElement('input'); step.type='number'; step.step='0.25'; step.min='0.01'; step.placeholder='Trin'; step.style.width='100px';
+        const btn=document.createElement('button'); btn.className='btn primary'; btn.textContent='Tilføj'; btn.onclick=()=>{ const newId=id(); const entry={id:newId,name:u.name,cat:sel.value,img:'',sold:u.sold,stock:0,unit:unit.value||'stk',step:Math.max(0.01,Number(step.value||1))}; set(ref(db,`inventory/${newId}`),entry); row.remove(); if(!unmatchedList.children.length) unmatchedSection.classList.add('hidden'); };
+        right.append(sel,unit,step,btn); row.append(left,right); unmatchedList.append(row); }); }
+    // JSON import/export
+    jsonInput.addEventListener('change',async e=>{ const file=e.target.files[0]; if(!file)return; try{ const txt=await file.text(); const data=JSON.parse(txt); if(!Array.isArray(data.items)) throw new Error(); // clear existing
+        set(ref(db,'inventory'),{});
+        data.items.forEach(x=>{ const newId=x.id||id(); const entry={id:newId,name:x.name,cat:x.cat,img:x.img||'',sold:0,stock:x.stock||0,unit:x.unit||'',step:x.step||1}; set(ref(db,`inventory/${newId}`),entry); }); alert(`Importeret ${data.items.length} varer`);
+      }catch(err){ alert('Kunne ikke importere JSON: '+err.message);} finally{ jsonInput.value=''; } });
+    exportJSONBtn.addEventListener('click',()=>{ const data={items:Object.values(items)}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventar_export.json'; a.click(); URL.revokeObjectURL(a.href); });
+    // Reset
+    resetSalesBtn.addEventListener('click',()=>{ if(!confirm('Nulstil solgt for alle?')) return; Object.values(items).forEach(it=> update(ref(db,`inventory/${it.id}`),{sold:0})); });
+    // Download template
+    downloadTplBtn.addEventListener('click',()=>{ const tpl=['Dato;Varenr;Varenavn;Kategori;AntalSolgt;NettoOms;Moms;BruttoOms','2025-08-01;P001;Lille popcorn;Snacks;8;240,00;60,00;300,00','2025-08-01;D021;Pepsi Max 0,5L;Sodavand;5;76,00;19,00;95,00'].join('\n'); const blob=new Blob([tpl],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kiosk_eksempel.csv'; a.click(); URL.revokeObjectURL(a.href); });
+    // init
+    render(); renderUnmatched([]);
   </script>
 </body>
 </html>
