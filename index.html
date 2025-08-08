@@ -72,9 +72,7 @@
     .btn.ok{ background:transparent; color:var(--ok); border-color: color-mix(in oklab, var(--ok), var(--border) 60%); }
 
     .field{ display:flex; align-items:center; gap:8px; background:var(--muted); border:1px solid var(--border); border-radius:12px; padding:6px 10px; }
-    .field input, .field select{
-      background:transparent; border:0; color:var(--text); outline:none; font: inherit; min-width:120px;
-    }
+    .field input, .field select{ background:transparent; border:0; color:var(--text); outline:none; font: inherit; min-width:120px; }
     .switch{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; }
 
     main{ max-width:1200px; margin: 0 auto; padding: 18px; }
@@ -86,15 +84,15 @@
     .stats{ display:flex; gap:10px; flex-wrap:wrap; margin: 6px 0 12px; }
     .stat{ display:flex; gap:8px; align-items:center; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:8px 12px; }
 
-    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
     .card{ background:var(--panel); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--shadow); }
-    .thumb{ aspect-ratio: 16/10; background:var(--muted-2); display:block; }
-    .meta{ padding:12px; display:flex; flex-direction:column; gap:8px; }
-    .name{ font-weight:800; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .thumb{ aspect-ratio: 16/10; background:var(--muted-2); display:block; object-fit:cover; }
+    .meta{ padding:12px; display:flex; flex-direction:column; gap:10px; overflow:visible; }
+    .name{ font-weight:800; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
     .cat{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--sub); border:1px solid var(--border); border-radius:999px; padding:2px 8px; }
-    .row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; flex-wrap:wrap; }
     .row-actions{ flex-wrap: wrap; }
-    .row-actions .pill{ flex:1 1 auto; min-width: fit-content; }
+    .row-actions .pill{ flex:1 1 auto; min-width: 180px; }
     .row-actions .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
     .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:var(--muted-2); border:1px solid var(--border); color:var(--text); white-space:nowrap; }
     .qty{ display:inline-flex; align-items:center; gap:6px; }
@@ -108,7 +106,7 @@
     summary{ cursor:pointer; font-weight:800; }
 
     .list{ display:flex; flex-direction:column; gap:8px; }
-    .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
+    .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; flex-wrap:wrap; }
 
     /* Modal */
     .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); z-index:2000; }
@@ -121,8 +119,11 @@
     /* Toast */
     .toast{ position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--panel); border:1px solid var(--border); padding:10px 14px; border-radius:10px; box-shadow: var(--shadow); display:none; }
     .toast.show{ display:block; }
-  @media (max-width: 420px){
+
+    @media (max-width: 480px){
+      .grid{ grid-template-columns: 1fr; }
       .row-actions .actions{ width:100%; justify-content:flex-start; }
+      .btn{ padding:6px 10px; }
     }
   </style>
 </head>
@@ -165,7 +166,6 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <input id="newName" type="text" placeholder="Varenavn" />
           <select id="newCat"></select>
-          <input id="newImg" type="url" placeholder="Billede-URL (valgfrit)" />
           <input id="newImgFile" type="file" accept="image/*" capture="environment" />
           <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
           <input id="newUnit" type="text" placeholder="Enhed" />
@@ -246,8 +246,7 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, onValue, set, push, update, remove, get, child }
-      from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { getDatabase, ref, onValue, set, push, update, remove, get, child } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js';
 
     // ─── Firebase-konfiguration (udfyld din egen apiKey osv.) ───
@@ -256,7 +255,7 @@
       authDomain: "bordfodbolddtu.firebaseapp.com",
       databaseURL: "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bordfodbolddtu",
-      storageBucket: "bordfodbolddtu.firebasedatabase.app",
+      storageBucket: "bordfodbolddtu.firebasedatabase.app", /* ← tjek at denne matcher dit Storage bucket (typisk PROJECTID.appspot.com) */
       messagingSenderId: "993863941891",
       appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
     };
@@ -317,7 +316,6 @@
     let items = {};            // id -> item
     let purchases = {};        // id -> purchase
     let activeCat = localStorage.getItem('activeCat') || 'Alle';
-    let lastAction = null;     // til undo
 
     // Preferences
     onlyLowEl.checked = localStorage.getItem('onlyLow') === '1';
@@ -335,9 +333,7 @@
       localStorage.setItem('theme', t);
     });
 
-    const setHeaderHeight = () => {
-      document.documentElement.style.setProperty('--header-h', hdr.offsetHeight + 'px');
-    };
+    const setHeaderHeight = () => { document.documentElement.style.setProperty('--header-h', hdr.offsetHeight + 'px'); };
     setHeaderHeight();
     addEventListener('resize', setHeaderHeight);
 
@@ -366,74 +362,27 @@
     const normalizeName = s => (s||"")
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
       .replace(/[,. ;:\/()\-]/g,' ').replace(/\s+/g,' ').trim();
-    const aliasToCanonical = v => {
-      const n = normalizeName(v);
-      if(n.includes('pepsi max')) return 'Pepsi Max 0,5L';
-      if(n.includes('guldbams'))  return 'Haribo Guldbamser';
-      if(n.includes('popcorn'))   return 'Mellem popcorn';
-      return null;
-    };
-    const catEmoji = c => {
-      if(c.includes('Sodavand')) return '🥤';
-      if(c.includes('Popcorn'))  return '🍿';
-      if(c.includes('Slik'))     return '🍬';
-      if(c.includes('Barer'))    return '🍫';
-      return '📦';
-    };
+    const aliasToCanonical = v => { const n = normalizeName(v); if(n.includes('pepsi max')) return 'Pepsi Max 0,5L'; if(n.includes('guldbams')) return 'Haribo Guldbamser'; if(n.includes('popcorn')) return 'Mellem popcorn'; return null; };
+    const catEmoji = c => { if(c.includes('Sodavand')) return '🥤'; if(c.includes('Popcorn')) return '🍿'; if(c.includes('Slik')) return '🍬'; if(c.includes('Barer')) return '🍫'; return '📦'; };
     const placeholderSVG = (text,emoji) => {
       const svg = `\n<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">\n<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">\n<stop offset="0%" stop-color="#0f1a2a"/><stop offset="100%" stop-color="#1b2b45"/>\n</linearGradient></defs>\n<rect width="100%" height="100%" fill="url(#g)"/>\n<text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui" font-size="90" fill="#cfe1ff" opacity="0.9">${emoji}</text>\n<text x="50%" y="75%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui" font-size="28" fill="#cfe1ff" opacity="0.9">${text}</text>\n</svg>`;
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     };
 
-    const toast = (msg, ms=1800) => {
-      const t = document.getElementById('toast');
-      t.textContent = msg; t.classList.add('show');
-      setTimeout(()=>t.classList.remove('show'), ms);
-    };
-
+    const toast = (msg, ms=1800) => { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), ms); };
     const defaultReorder = () => Number(localStorage.getItem('defReorder')||'2');
-
     const lowFlag = it => (it.stock||0) <= (it.reorder ?? defaultReorder());
-
-    const savePrefs = () => {
-      localStorage.setItem('onlyLow', onlyLowEl.checked ? '1' : '0');
-      localStorage.setItem('sort', sortEl.value);
-      localStorage.setItem('query', qEl.value);
-      localStorage.setItem('activeCat', activeCat);
-    };
+    const savePrefs = () => { localStorage.setItem('onlyLow', onlyLowEl.checked ? '1' : '0'); localStorage.setItem('sort', sortEl.value); localStorage.setItem('query', qEl.value); localStorage.setItem('activeCat', activeCat); };
 
     // ─── Render ───
     function renderAll(){ renderTabs(); renderCards(); renderStats(); renderShoppingList(); }
-
-    function renderTabs(){
-      tabsEl.innerHTML = '';
-      CATS.forEach(cat=>{
-        const b = document.createElement('button');
-        b.className = 'tab' + (cat===activeCat?' active':'');
-        b.textContent = cat; b.onclick = ()=>{ activeCat=cat; savePrefs(); renderAll(); };
-        tabsEl.appendChild(b);
-      });
-    }
-
+    function renderTabs(){ tabsEl.innerHTML = ''; CATS.forEach(cat=>{ const b = document.createElement('button'); b.className = 'tab' + (cat===activeCat?' active':''); b.textContent = cat; b.onclick = ()=>{ activeCat=cat; savePrefs(); renderAll(); }; tabsEl.appendChild(b); }); }
     qEl.addEventListener('input', ()=>{ savePrefs(); renderCards(); });
     sortEl.addEventListener('change', ()=>{ savePrefs(); renderCards(); });
     onlyLowEl.addEventListener('change', ()=>{ savePrefs(); renderAll(); });
 
-    function cardSort(a,b){
-      switch(sortEl.value){
-        case 'stockAsc': return (a.stock||0)-(b.stock||0);
-        case 'stockDesc': return (b.stock||0)-(a.stock||0);
-        case 'soldDesc': return (b.sold||0)-(a.sold||0);
-        case 'updatedDesc': return (b.updatedAt||0)-(a.updatedAt||0);
-        default: return a.name.localeCompare(b.name,'da');
-      }
-    }
-
-    function matchQuery(it){
-      const q = qEl.value.trim().toLowerCase();
-      if(!q) return true;
-      return it.name.toLowerCase().includes(q) || (it.cat||'').toLowerCase().includes(q);
-    }
+    function cardSort(a,b){ switch(sortEl.value){ case 'stockAsc': return (a.stock||0)-(b.stock||0); case 'stockDesc': return (b.stock||0)-(a.stock||0); case 'soldDesc': return (b.sold||0)-(a.sold||0); case 'updatedDesc': return (b.updatedAt||0)-(a.updatedAt||0); default: return a.name.localeCompare(b.name,'da'); } }
+    function matchQuery(it){ const q = qEl.value.trim().toLowerCase(); if(!q) return true; return it.name.toLowerCase().includes(q) || (it.cat||'').toLowerCase().includes(q); }
 
     function renderCards(){
       cardsEl.innerHTML = '';
@@ -443,10 +392,7 @@
         .filter(it => !onlyLowEl.checked || lowFlag(it))
         .sort(cardSort);
 
-      if(!arr.length){
-        cardsEl.innerHTML = '<div class="empty">Ingen varer matcher filtrene.</div>';
-        return;
-      }
+      if(!arr.length){ cardsEl.innerHTML = '<div class="empty">Ingen varer matcher filtrene.</div>'; return; }
 
       arr.forEach(it=>{
         const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '');
@@ -462,10 +408,7 @@
         const minus = document.createElement('button'); minus.textContent='–'; minus.onclick=()=>changeStock(it, -(it.step||1));
         const val = document.createElement('span'); val.className='val'; val.title='Klik for at redigere';
         val.textContent = `På lager: ${(it.stock||0).toString().replace('.',',')} ${it.unit||''}`;
-        val.onclick = ()=>{
-          const n = prompt(`Indstil lager for "${it.name}"`, String(it.stock||0));
-          if(n!==null){ const v = Math.max(0, Number(n.replace(',','.'))); update(ref(db,`inventory/${it.id}`), { stock: v, updatedAt: Date.now() }); }
-        };
+        val.onclick = ()=>{ const n = prompt(`Indstil lager for "${it.name}"`, String(it.stock||0)); if(n!==null){ const v = Math.max(0, Number(n.replace(',','.'))); update(ref(db,`inventory/${it.id}`), { stock: v, updatedAt: Date.now() }); } };
         const plus = document.createElement('button'); plus.textContent='+'; plus.onclick=()=>changeStock(it, it.step||1);
         left.append(minus,val,plus);
         const right = document.createElement('div'); right.className='pill'; right.textContent = `Solgt: ${it.sold||0}`;
@@ -474,22 +417,16 @@
         const row2 = document.createElement('div'); row2.className='row row-actions';
         const info = document.createElement('div'); info.className='pill';
         const ro = (it.reorder ?? defaultReorder());
-        info.textContent = `Lav-lager grænse: ${ro}`;
-        info.title = 'Klik for at ændre';
-        info.style.cursor='pointer';
-        info.onclick = ()=>{
-          const n = prompt('Ny lav-lager grænse', String(ro)); if(n===null) return;
-          const v = Math.max(0, Number(n.replace(',','.')));
-          update(ref(db,`inventory/${it.id}`), { reorder: v, updatedAt: Date.now() });
-        };
+        info.textContent = `Lav-lager grænse: ${ro}`; info.title = 'Klik for at ændre'; info.style.cursor='pointer';
+        info.onclick = ()=>{ const n = prompt('Ny lav-lager grænse', String(ro)); if(n===null) return; const v = Math.max(0, Number(n.replace(',','.'))); update(ref(db,`inventory/${it.id}`), { reorder: v, updatedAt: Date.now() }); };
+
         const actions = document.createElement('div'); actions.className='actions';
-        const bImg = (function(){
-          const input = document.createElement('input');
-          input.type='file'; input.accept='image/*'; input.capture='environment'; input.style.display='none';
-          card.appendChild(input);
-          input.onchange = async (e)=>{ const f=e.target.files[0]; if(!f) return; const url = await uploadImageForItem(f, it); if(url) update(ref(db,`inventory/${it.id}`), { img:url, updatedAt: Date.now() }); };
-          return btn('Skift billede','ghost', ()=> input.click());
-        })(); if(url!==null) update(ref(db,`inventory/${it.id}`), { img:url.trim(), updatedAt: Date.now() }); });
+        // fil-upload til at skifte billede på eksisterende vare (virker på mobil og desktop)
+        const fileInput = document.createElement('input');
+        fileInput.type='file'; fileInput.accept='image/*'; fileInput.capture='environment'; fileInput.style.display='none';
+        card.appendChild(fileInput);
+        fileInput.onchange = async (e)=>{ const f=e.target.files[0]; if(!f) return; const url = await uploadImageForItem(f, it); if(url) update(ref(db,`inventory/${it.id}`), { img:url, updatedAt: Date.now() }); };
+        const bImg = btn('Skift billede','ghost', ()=> fileInput.click());
         const bUnit = btn('Enhed/trin','ghost', ()=>{
           const u = prompt('Enhed:', it.unit||''); if(u===null) return;
           const s = prompt('Trin:', String(it.step||1)); if(s===null) return;
@@ -508,12 +445,7 @@
 
     function btn(label, cls, on){ const b=document.createElement('button'); b.className='btn '+cls; b.textContent=label; b.onclick=on; return b; }
 
-    function renderStats(){
-      const arr = Object.values(items);
-      statCount.textContent = arr.length;
-      statLow.textContent = arr.filter(lowFlag).length;
-      statSold.textContent = arr.reduce((s,it)=>s+(it.sold||0),0);
-    }
+    function renderStats(){ const arr = Object.values(items); statCount.textContent = arr.length; statLow.textContent = arr.filter(lowFlag).length; statSold.textContent = arr.reduce((s,it)=>s+(it.sold||0),0); }
 
     function renderShoppingList(){
       shoppingList.innerHTML = '';
@@ -522,7 +454,7 @@
       low.forEach(it=>{
         const row = document.createElement('div'); row.className='list-item';
         const left = document.createElement('div'); left.innerHTML = `<strong>${it.name}</strong><br><span style="opacity:.8">${it.cat} • Lager: ${it.stock||0} ${it.unit||''} • Grænse: ${it.reorder ?? defaultReorder()}</span>`;
-        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px'; right.style.alignItems='center';
+        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px'; right.style.alignItems='center'; right.style.flexWrap='wrap';
         const qty = document.createElement('input'); qty.type='number'; qty.step='0.25'; qty.min='0'; qty.placeholder='Køb mængde'; qty.style.width='120px';
         qty.value = Math.max(0, (it.reorder ?? defaultReorder()) - (it.stock||0));
         const price = document.createElement('input'); price.type='number'; price.step='0.01'; price.min='0'; price.placeholder='Pris (valgfri)'; price.style.width='120px';
@@ -607,25 +539,18 @@
       const pId = push(ref(db,'purchases')).key;
       const p = { id:pId, itemId: it.id, name: it.name, unit: it.unit||'', qty, price: price||null, note: note||null, ts: Date.now() };
       await set(ref(db,`purchases/${pId}`), p);
-      lastAction = { type:'purchase', purchase:p };
       toast(`+${qty} ${it.unit||''} til ${it.name}`);
     }
 
     // ─── CSV import ───
     const CSV_HEADER = ["dato","varenr","varenavn","kategori","antalsolgt","nettooms","moms","bruttooms"];
-    csvInput.addEventListener('change', async e=>{
-      const file = e.target.files[0]; if(!file) return; const text = await file.text(); applyCSV(text, document.getElementById('cbDeduct').checked); csvInput.value=''; });
+    csvInput.addEventListener('change', async e=>{ const file = e.target.files[0]; if(!file) return; const text = await file.text(); applyCSV(text, document.getElementById('cbDeduct').checked); csvInput.value=''; });
 
-    function parseCSV(text){
-      const lines = text.replace(/\r\n/g,'\n').split('\n').filter(l=>l.trim());
-      const rows=[]; for(const line of lines){ const out=[]; let cur='', inQ=false; for(const ch of line){ if(ch==='"'){ inQ=!inQ; continue; } if(ch===';' && !inQ){ out.push(cur); cur=''; continue; } cur+=ch; } out.push(cur); rows.push(out); } return rows;
-    }
+    function parseCSV(text){ const lines = text.replace(/\r\n/g,'\n').split('\n').filter(l=>l.trim()); const rows=[]; for(const line of lines){ const out=[]; let cur='', inQ=false; for(const ch of line){ if(ch==='"'){ inQ=!inQ; continue; } if(ch===';' && !inQ){ out.push(cur); cur=''; continue; } cur+=ch; } out.push(cur); rows.push(out); } return rows; }
     async function applyCSV(txt, deduct){
       const rows = parseCSV(txt); if(!rows.length){ alert('CSV tom'); return; }
       const header = rows[0].map(h=>h.trim().toLowerCase());
-      if(!CSV_HEADER.every((h,i)=>header[i]===h)){
-        if(!confirm('Header matcher ikke. Fortsæt?')) return;
-      }
+      if(!CSV_HEADER.every((h,i)=>header[i]===h)){ if(!confirm('Header matcher ikke. Fortsæt?')) return; }
       const sums = new Map();
       for(let i=1;i<rows.length;i++){
         const r=rows[i]; if(r.length<5) continue;
@@ -715,12 +640,20 @@
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kiosk_eksempel.csv'; a.click(); URL.revokeObjectURL(a.href);
     });
 
-    // ─── Add item ───
+    // ─── Add item (BILLEDE ER PÅKRÆVET) ───
     document.getElementById('addItem').addEventListener('click', async ()=>{
-      const base = {
-        id: id(),
-        name: document.getElementById('newName').value.trim(),
+      const file = newImgFile && newImgFile.files && newImgFile.files[0];
+      if(!file){ alert('Billede er påkrævet for nye varer'); return; }
+      const name = document.getElementById('newName').value.trim();
+      if(!name){ alert('Varenavn mangler'); return; }
+
+      const baseId = id();
+      const imgUrl = await uploadImage(file, `inventory/${baseId}.jpg`);
+      const entry = {
+        id: baseId,
+        name,
         cat: newCat.value,
+        img: imgUrl,
         stock: Number(document.getElementById('newStock').value||0),
         unit: document.getElementById('newUnit').value.trim()||'stk',
         step: Math.max(0.01, Number(document.getElementById('newStep').value||1)),
@@ -728,15 +661,9 @@
         sold: 0,
         updatedAt: Date.now(),
       };
-      if(!base.name){ alert('Varenavn mangler'); return; }
-      let imgUrl = document.getElementById('newImg').value.trim();
-      if(newImgFile && newImgFile.files && newImgFile.files[0]){
-        imgUrl = await uploadImage(newImgFile.files[0], `inventory/${base.id}.jpg`);
-      }
-      const entry = { ...base, img: imgUrl };
       await set(ref(db,`inventory/${entry.id}`), entry);
       toast('Vare tilføjet');
-      ['newName','newImg','newStock','newUnit','newStep','newReorder'].forEach(id=> document.getElementById(id).value='');
+      ['newName','newStock','newUnit','newStep','newReorder'].forEach(id=> document.getElementById(id).value='');
       if(newImgFile) newImgFile.value='';
     });
 
