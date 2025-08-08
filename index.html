@@ -13,8 +13,7 @@
       --sub: #b8c3d6;
       --accent: #6aa0ff;
       --danger: #ff6b6b;
-      /* Vi sætter --header-h til 0 her, men overskrives straks via JS */
-      --header-h: 0px;
+      --header-h: 0px; /* sættes med JS */
     }
 
     * { box-sizing: border-box; }
@@ -29,10 +28,7 @@
 
     header {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      /* fjernet hårdkodet height – vi lader browser beregne den */
+      top: 0; left: 0; right: 0;
       padding: 20px;
       display: flex;
       gap: 16px;
@@ -42,15 +38,18 @@
       background: rgba(0,0,0,.25);
       backdrop-filter: blur(8px);
       z-index: 1000;
-      transition: top 0.3s ease;
+      /* initial synlig tilstand */
+      transform: translateY(0);
+      transition: transform 0.3s ease;
     }
 
-    /* Skub hele header-boksen fuldstændig udenfor viewport */
+    /* Skjul header fuldstændigt ved scroll ned */
     header.hidden-on-scroll {
-      top: calc(-1 * var(--header-h));
+      transform: translateY(-100%);
     }
 
-    /* resten af dine styles … */
+    /* — resten af dine styles uændret — */
+
     h1 { margin: 0; font-size: 20px; font-weight: 700; }
     .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .btn { appearance: none; border: 1px solid transparent; background: var(--muted); color: var(--text); padding: 10px 12px; border-radius: 12px; cursor: pointer; font-weight: 600; }
@@ -90,17 +89,15 @@
   <header>
     <h1>Inventarliste (kiosk)</h1>
     <div class="controls">
-      <!-- dine badges, knapper, detaljer osv. som før -->
       <label class="badge">
         <span>Upload CSV</span>
         <input id="csvInput" type="file" accept=".csv,text/csv">
       </label>
-      <!-- ... resten af header-indholdet ... -->
+      <!-- … resten af dine badges og knapper … -->
     </div>
   </header>
 
   <main>
-    <!-- dit main-indhold som før -->
     <div class="tabs" id="tabs"></div>
     <div class="grid" id="cards"></div>
     <section id="unmatchedSection" class="hidden" style="margin-top:22px">
@@ -126,34 +123,21 @@
     import { getDatabase, ref, onValue, set, push, update, remove }
       from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
-    // Firebase init som før…
-    const cfg = {
-      apiKey: "...",
-      authDomain: "bordfodbolddtu.firebaseapp.com",
-      databaseURL:
-        "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "bordfodbolddtu",
-      storageBucket: "bordfodbolddtu.firebasedatabase.app",
-      messagingSenderId: "993863941891",
-      appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
-    };
-    const app = initializeApp(cfg);
-    const db  = getDatabase(app);
+    // … din Firebase-setup, helper-funktioner og render-logic som før …
 
-    // … alle dine variabler, helper-funktioner og render() som før …
-
-    // ▼▼▼ Dynamisk opsætning af --header-h ▼▼▼
+    // ────────────────────────────────────────────────────────────────────
+    // Dynamisk måling af header-højde til body-padding
     const hdr = document.querySelector('header');
     const setHeaderHeight = () => {
-      const h = hdr.offsetHeight;
-      document.documentElement.style.setProperty('--header-h', `${h}px`);
+      document.documentElement.style.setProperty(
+        '--header-h',
+        `${hdr.offsetHeight}px`
+      );
     };
-    // Kør straks (modulet er defer’et så DOM’en er klar), og igen ved resize
     setHeaderHeight();
     window.addEventListener('resize', setHeaderHeight);
-    // ▲▲▲ færdig opsætning af header-h ▲▲▲
 
-    // Scroll-hide header: sæt top = -var(--header-h) på scroll ned
+    // Scroll-hide header via transform
     let lastY = window.pageYOffset;
     window.addEventListener('scroll', () => {
       const y = window.pageYOffset;
@@ -164,8 +148,9 @@
       }
       lastY = y;
     });
+    // ────────────────────────────────────────────────────────────────────
 
-    // … resten af din CSV/JSON-import, rendering, Firebase‐kald osv. uændret …
+    // … resten af din CSV/JSON-import, eksport, Firebase‐kald osv. …
   </script>
 </body>
 </html>
