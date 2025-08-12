@@ -166,7 +166,8 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <input id="newName" type="text" placeholder="Varenavn" />
           <select id="newCat"></select>
-          <input id="newImgFile" type="file" accept="image/*" capture="environment" />
+          <!-- Fjernet capture, så brugeren kan vælge kamera ELLER galleri/fil -->
+          <input id="newImgFile" type="file" accept="image/*" />
           <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
           <input id="newUnit" type="text" placeholder="Enhed" />
           <input id="newStep" type="number" step="0.25" min="0.25" placeholder="Trin" />
@@ -249,19 +250,20 @@
     import { getDatabase, ref, onValue, set, push, update, remove, get, child } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js';
 
-    // ─── Firebase-konfiguration (udfyld din egen apiKey osv.) ───
+    // ─── Firebase-konfiguration (RET storageBucket til dit faktiske bucket) ───
     const cfg = {
       apiKey: "...",
       authDomain: "bordfodbolddtu.firebaseapp.com",
       databaseURL: "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bordfodbolddtu",
-      storageBucket: "bordfodbolddtu.firebasedatabase.app", /* ← tjek at denne matcher dit Storage bucket (typisk PROJECTID.appspot.com) */
+      storageBucket: "bordfodbolddtu.appspot.com", // ← korrekt format (<projectId>.appspot.com)
       messagingSenderId: "993863941891",
       appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
     };
     const app = initializeApp(cfg);
+    // Vær eksplicit med bucket (hjælper mod tastefejl):
+    const storage = getStorage(app, `gs://${cfg.storageBucket}`);
     const db  = getDatabase(app);
-    const storage = getStorage(app);
 
     // ─── DOM ───
     const hdr = document.querySelector('header');
@@ -349,14 +351,19 @@
         img.onerror=reject; img.src=url; });
     }
     async function uploadImage(file, path){
-      const small = await compressImage(file);
-      const r = sRef(storage, path);
-      await uploadBytes(r, small, { contentType: small.type || 'image/jpeg' });
-      return await getDownloadURL(r);
+      try{
+        const small = await compressImage(file);
+        const r = sRef(storage, path);
+        const snap = await uploadBytes(r, small, { contentType: small.type || 'image/jpeg' });
+        return await getDownloadURL(snap.ref);
+      }catch(err){
+        console.error('Kunne ikke uploade billede', err);
+        throw err;
+      }
     }
     async function uploadImageForItem(file, it){
       try{ return await uploadImage(file, `inventory/${it.id}.jpg`); }
-      catch(err){ alert('Kunne ikke uploade billede: '+err.message); return null; }
+      catch(err){ alert('Kunne ikke uploade billede: '+(err?.message||err)); return null; }
     }
     const id = () => push(ref(db,'inventory')).key;
     const normalizeName = s => (s||"")
@@ -421,9 +428,9 @@
         info.onclick = ()=>{ const n = prompt('Ny lav-lager grænse', String(ro)); if(n===null) return; const v = Math.max(0, Number(n.replace(',','.'))); update(ref(db,`inventory/${it.id}`), { reorder: v, updatedAt: Date.now() }); };
 
         const actions = document.createElement('div'); actions.className='actions';
-        // fil-upload til at skifte billede på eksisterende vare (virker på mobil og desktop)
+        // fil-upload til at skifte billede på eksisterende vare (mobil + desktop). capture er fjernet for at give galleri/fil-valg
         const fileInput = document.createElement('input');
-        fileInput.type='file'; fileInput.accept='image/*'; fileInput.capture='environment'; fileInput.style.display='none';
+        fileInput.type='file'; fileInput.accept='image/*'; fileInput.style.display='none';
         card.appendChild(fileInput);
         fileInput.onchange = async (e)=>{ const f=e.target.files[0]; if(!f) return; const url = await uploadImageForItem(f, it); if(url) update(ref(db,`inventory/${it.id}`), { img:url, updatedAt: Date.now() }); };
         const bImg = btn('Skift billede','ghost', ()=> fileInput.click());
