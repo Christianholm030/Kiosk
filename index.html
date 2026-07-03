@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kiosk — Sortiment liste</title>
+  <title>Sortiment liste</title>
   <meta name="color-scheme" content="dark light" />
   <style>
     :root{
@@ -107,7 +107,7 @@
       border-radius:14px;
       padding:7px 11px;
     }
-    .field input, .field select, .badge input, details input, details select, .dialog input, .dialog select, .email-controls input{
+    .field input, .field select, .badge input, details input, details select, .dialog input, .dialog select, .email-controls input, .email-tools input{
       background:transparent;
       border:0;
       color:var(--text);
@@ -115,7 +115,7 @@
       font:inherit;
       min-width:110px;
     }
-    .field:focus-within, .email-controls:focus-within{ border-color:var(--accent); }
+    .field:focus-within, .email-controls:focus-within, .email-tools:focus-within{ border-color:var(--accent); }
     .field input[type="search"]{ width:100%; min-width:170px; }
     .switch{ border-radius:999px; color:var(--sub); }
     .badge{ color:var(--sub); }
@@ -194,7 +194,7 @@
     .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:14px; padding:10px 11px; flex-wrap:wrap; }
     .list-item input, .list-item select{ min-height:38px; border:1px solid var(--border); border-radius:12px; padding:6px 9px; color:var(--text); background:var(--panel-solid); }
 
-    .email-controls{
+    .email-controls, .email-tools{
       margin-top:10px;
       display:flex;
       align-items:center;
@@ -204,7 +204,7 @@
       padding-top:10px;
       border-top:1px solid var(--border);
     }
-    .email-controls input{
+    .email-controls input, .email-tools input{
       min-height:var(--tap);
       min-width:260px;
       background:var(--muted-2);
@@ -268,8 +268,8 @@
       .list-item{ align-items:stretch; }
       .list-item > div{ width:100%; }
       .list-item input, .list-item select{ width:100% !important; }
-      .email-controls{ flex-direction:column; align-items:stretch; }
-      .email-controls input, .email-controls .btn{ width:100%; min-width:0; }
+      .email-controls, .email-tools{ flex-direction:column; align-items:stretch; }
+      .email-controls input, .email-controls .btn, .email-tools input, .email-tools .btn{ width:100%; min-width:0; }
       .modal{ place-items:end center; padding:0; }
       .dialog{ width:100%; max-height:92vh; overflow:auto; border-radius:20px 20px 0 0; padding:16px; }
       .dialog .grid2{ grid-template-columns:1fr; }
@@ -295,6 +295,25 @@
     .compact-switch{ flex:0 0 auto; }
     .tools-panel{ margin:0 0 14px; }
     .admin-tools{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+    .email-tools{
+      margin-top:10px;
+      justify-content:flex-start;
+      border-top:1px solid var(--border);
+      padding-top:10px;
+    }
+    .file-action{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+    }
+    .file-action input{
+      position:absolute;
+      width:1px; height:1px;
+      opacity:0;
+      pointer-events:none;
+    }
+
     .nested-tool{ margin-top:10px; box-shadow:none; }
     .add-form{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:8px; align-items:center; }
     .add-form input, .add-form select{ min-height:var(--tap); border:1px solid var(--border); border-radius:14px; padding:8px 10px; color:var(--text); background:var(--muted-2); }
@@ -343,7 +362,7 @@
   <header>
     <div class="brand">
       <h1>Sortiment liste</h1>
-      <span class="version-pill">v5</span>
+      <span class="version-pill">v6</span>
     </div>
     <div class="toolbar grow top-controls">
       <div class="field top-search">
@@ -390,6 +409,12 @@
           <button class="btn" id="exportPurchases">Eksportér indkøb</button>
           <button class="btn danger" id="resetSales">Nulstil solgt</button>
         </div>
+        <div class="email-tools">
+          <input id="emailRecipient" type="email" placeholder="Modtager-email til indkøbsliste" />
+          <button class="btn primary" id="emailLowStock">Send indkøbsliste</button>
+          <button class="btn" id="openEmailClient">Åbn som mail</button>
+          <button class="btn" id="copyLowStock">Kopiér liste</button>
+        </div>
         <details class="nested-tool">
           <summary>Tilføj ny vare</summary>
           <div class="add-form">
@@ -413,10 +438,6 @@
         <summary>🧾 Indkøbsliste (varer under grænsen) & bulk-indkøb</summary>
         <div class="list" id="shoppingList"></div>
         <div class="email-controls">
-          <input id="emailRecipient" type="email" placeholder="Modtager-email til indkøbsliste" />
-          <button class="btn primary" id="emailLowStock">Færdig – send automatisk</button>
-          <button class="btn" id="openEmailClient">Åbn som mail</button>
-          <button class="btn" id="copyLowStock">Kopiér liste</button>
           <button class="btn ok" id="purchaseSelected">Markér som købt</button>
         </div>
       </details>
@@ -517,8 +538,9 @@
       appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
     };
 
-    // Automatisk email kræver en backend/Firebase Function.
-    // Indsæt HTTPS-URL'en til funktionen her, når den er deployet.
+    // Manuel “Send indkøbsliste” fra websitet kræver en backend/Firebase Function.
+    // Den ugentlige automatiske søndagsmail kan køre separat via GitHub Actions.
+    // Indsæt kun en HTTPS Function URL her, hvis knappen i websitet også skal sende direkte.
     const AUTO_EMAIL_FUNCTION_URL = "";
 
     const app = initializeApp(cfg);
@@ -819,29 +841,26 @@
         };
 
         const actions = document.createElement('div'); actions.className='actions';
-        // To billedvalg: kamera på telefon + almindeligt galleri/filvalg.
-        const cameraInput = document.createElement('input');
-        cameraInput.type='file'; cameraInput.accept='image/*'; cameraInput.capture='environment';
-        cameraInput.style.display='none';
-        const galleryInput = document.createElement('input');
-        galleryInput.type='file'; galleryInput.accept='image/*';
-        galleryInput.style.display='none';
-        card.append(cameraInput, galleryInput);
+        // Direkte <label><input type=file></label> er mere stabilt på mobil end skjulte inputs med .click().
         const handleImageChange = async (e)=>{
-          const f=e.target.files[0];
+          const f=e.target.files && e.target.files[0];
           if(!f) return;
+          const previewUrl = URL.createObjectURL(f);
+          img.src = previewUrl;
           toast('Gemmer billede…');
-          const url = await uploadImageForItem(f, it);
-          if(url){
-            await update(ref(db,`inventory/${it.id}`), { img:url, updatedAt: Date.now() });
+          const savedUrl = await uploadImageForItem(f, it);
+          if(savedUrl){
+            await update(ref(db,`inventory/${it.id}`), { img:savedUrl, updatedAt: Date.now() });
+            img.src = versioned(savedUrl, Date.now());
             toast('Billede opdateret');
+          }else{
+            img.src = it.img ? versioned(it.img, it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
           }
+          URL.revokeObjectURL(previewUrl);
           e.target.value='';
         };
-        cameraInput.onchange = handleImageChange;
-        galleryInput.onchange = handleImageChange;
-        const bCamera = btn('Kamera','ghost', ()=> cameraInput.click());
-        const bGallery = btn('Billede','ghost', ()=> galleryInput.click());
+        const bCamera = fileBtn('Kamera', 'image/*', 'environment', handleImageChange);
+        const bGallery = fileBtn('Billede', 'image/*', '', handleImageChange);
         const bEdit = btn('Redigér','ghost', ()=> openEditModal(it));
         const bBuy = btn('Købt ind','ok', ()=> openPurchaseModal(it));
         const bDel = btn('Fjern','danger', ()=>{ if(confirm(`Fjern ${it.name}?`)) remove(ref(db,`inventory/${it.id}`)); });
@@ -855,6 +874,19 @@
     }
 
     function btn(label, cls, on){ const b=document.createElement('button'); b.className='btn '+cls; b.textContent=label; b.onclick=on; return b; }
+
+    function fileBtn(label, accept, capture, onChange){
+      const l = document.createElement('label');
+      l.className = 'btn ghost file-action';
+      l.textContent = label;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = accept || 'image/*';
+      if(capture) input.setAttribute('capture', capture);
+      input.addEventListener('change', onChange);
+      l.appendChild(input);
+      return l;
+    }
 
     function renderStats(){
       const arr = Object.values(items);
@@ -957,7 +989,7 @@
         alert('Automatisk email fejlede: ' + (err && err.message ? err.message : err));
       }finally{
         emailLowStockBtn.disabled = false;
-        emailLowStockBtn.textContent = 'Færdig – send automatisk';
+        emailLowStockBtn.textContent = 'Send indkøbsliste';
       }
     }
 
