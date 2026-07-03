@@ -72,7 +72,7 @@
     }
     header.hidden-on-scroll{ transform: translateY(-100%); }
     h1{ margin:0; font-size:19px; letter-spacing:.2px; white-space:nowrap; }
-    h1::after{ content:"v4"; margin-left:8px; font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; vertical-align:middle; }
+    h1::after{ content:"v11"; margin-left:8px; font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; vertical-align:middle; }
     .toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .grow{ flex:1 1 420px; }
 
@@ -96,6 +96,7 @@
     .btn.ghost{ background:transparent; }
     .btn.danger{ background:transparent; color:var(--danger); border-color: color-mix(in oklab, var(--danger), var(--border) 55%); }
     .btn.ok{ background:transparent; color:var(--ok); border-color: color-mix(in oklab, var(--ok), var(--border) 55%); }
+    .btn.warn{ background:transparent; color:var(--warn); border-color: color-mix(in oklab, var(--warn), var(--border) 55%); }
 
     .field, .badge, .switch{
       display:flex;
@@ -139,7 +140,7 @@
     .tab.active{ background:var(--accent); color:#071021; border-color:transparent; }
 
     .stats{
-      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin: 6px 0 14px;
+      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin: 6px 0 14px;
     }
     .stat{
       display:flex; gap:8px; align-items:center; justify-content:center;
@@ -162,6 +163,8 @@
       position:relative;
     }
     .card.low{ border-color:color-mix(in oklab, var(--warn) 70%, var(--border)); }
+    .card.discontinued{ opacity:.58; filter:saturate(.55); border-style:dashed; }
+    .card.discontinued .thumb{ opacity:.72; }
     .card.low::before{
       content:"Lavt lager";
       position:absolute; top:8px; left:8px; z-index:2;
@@ -362,7 +365,7 @@
   <header>
     <div class="brand">
       <h1>Sortiment liste</h1>
-      <span class="version-pill">v6</span>
+      <span class="version-pill">v11</span>
     </div>
     <div class="toolbar grow top-controls">
       <div class="field top-search">
@@ -380,6 +383,7 @@
         </select>
       </div>
       <label class="switch compact-switch"><input id="onlyLow" type="checkbox"/> Lavt lager</label>
+      <label class="switch compact-switch"><input id="showDiscontinued" type="checkbox"/> Vis udgåede</label>
       <label class="switch compact-switch"><input id="themeToggle" type="checkbox"/> Lys</label>
     </div>
   </header>
@@ -391,6 +395,7 @@
     <div class="stats">
       <div class="stat"><strong id="statCount">0</strong> varer</div>
       <div class="stat"><strong id="statLow">0</strong> lavt lager</div>
+      <div class="stat"><strong id="statDiscontinued">0</strong> udgåede</div>
       <div class="stat"><strong id="statSold">0</strong> solgt (periode)</div>
     </div>
 
@@ -509,6 +514,9 @@
         <label>Lav-lager grænse
           <input id="emReorder" type="number" step="0.25" min="0" style="width:100%"/>
         </label>
+        <label class="switch" style="grid-column:1/-1; justify-content:flex-start">
+          <input id="emDiscontinued" type="checkbox"/> Udgået af sortiment
+        </label>
         <label style="grid-column:1/-1">Nyt billede (valgfrit)
           <input id="emImgFile" type="file" accept="image/*" capture="environment" style="width:100%"/>
         </label>
@@ -554,6 +562,7 @@
     const qEl = document.getElementById('q');
     const sortEl = document.getElementById('sort');
     const onlyLowEl = document.getElementById('onlyLow');
+    const showDiscontinuedEl = document.getElementById('showDiscontinued');
     const themeToggle = document.getElementById('themeToggle');
 
     const csvInput = document.getElementById('csvInput');
@@ -578,6 +587,7 @@
 
     const statCount = document.getElementById('statCount');
     const statLow = document.getElementById('statLow');
+    const statDiscontinued = document.getElementById('statDiscontinued');
     const statSold = document.getElementById('statSold');
 
     const pm = {
@@ -600,6 +610,7 @@
       unit: document.getElementById('emUnit'),
       step: document.getElementById('emStep'),
       reorder: document.getElementById('emReorder'),
+      discontinued: document.getElementById('emDiscontinued'),
       imgFile: document.getElementById('emImgFile'),
       cancel: document.getElementById('emCancel'),
       save: document.getElementById('emSave'),
@@ -622,6 +633,7 @@
 
     // Preferences
     onlyLowEl.checked = localStorage.getItem('onlyLow') === '1';
+    showDiscontinuedEl.checked = localStorage.getItem('showDiscontinued') === '1';
     sortEl.value = localStorage.getItem('sort') || 'name';
     qEl.value = localStorage.getItem('query') || '';
     (function initTheme(){
@@ -748,9 +760,11 @@
     const defaultReorder = () => Number(localStorage.getItem('defReorder')||'2');
     const parseNum = v => Math.max(0, Number(String(v ?? 0).replace(',','.')) || 0);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const lowFlag = it => (it.stock||0) <= (it.reorder ?? defaultReorder());
+    const isDiscontinued = it => !!it.discontinued;
+    const lowFlag = it => !isDiscontinued(it) && (it.stock||0) <= (it.reorder ?? defaultReorder());
     const savePrefs = () => {
       localStorage.setItem('onlyLow', onlyLowEl.checked ? '1' : '0');
+      localStorage.setItem('showDiscontinued', showDiscontinuedEl.checked ? '1' : '0');
       localStorage.setItem('sort', sortEl.value);
       localStorage.setItem('query', qEl.value);
       localStorage.setItem('activeCat', activeCat);
@@ -771,6 +785,7 @@
     qEl.addEventListener('input', ()=>{ savePrefs(); renderCards(); });
     sortEl.addEventListener('change', ()=>{ savePrefs(); renderCards(); });
     onlyLowEl.addEventListener('change', ()=>{ savePrefs(); renderAll(); });
+    showDiscontinuedEl.addEventListener('change', ()=>{ savePrefs(); renderAll(); });
 
     function cardSort(a,b){
       switch(sortEl.value){
@@ -790,6 +805,7 @@
     function renderCards(){
       cardsEl.innerHTML = '';
       const arr = Object.values(items)
+        .filter(it => showDiscontinuedEl.checked || !isDiscontinued(it))
         .filter(it => (activeCat==='Alle' || it.cat===activeCat))
         .filter(it => matchQuery(it))
         .filter(it => !onlyLowEl.checked || lowFlag(it))
@@ -801,7 +817,7 @@
       }
 
       arr.forEach(it=>{
-        const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '');
+        const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '') + (isDiscontinued(it) ? ' discontinued' : '');
         const img = document.createElement('img'); img.className='thumb';
         img.src = it.img ? versioned(it.img, it.imgUpdatedAt || it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
         img.onerror = ()=>{ img.onerror=null; img.src=placeholderSVG(it.name, catEmoji(it.cat)); };
@@ -812,6 +828,7 @@
         const nameRow = document.createElement('div'); nameRow.className='name';
         const n = document.createElement('div'); n.textContent = it.name;
         const badge = document.createElement('span'); badge.className='cat'; badge.textContent = it.cat; nameRow.append(n,badge);
+        if(isDiscontinued(it)){ const d = document.createElement('span'); d.className='pill discontinued-pill'; d.textContent='Udgået'; nameRow.appendChild(d); }
 
         const stockRow = document.createElement('div'); stockRow.className='row';
         const left = document.createElement('div'); left.className='qty';
@@ -862,8 +879,10 @@
         const bGallery = fileBtn('Billede', 'image/*', '', handleImageChange);
         const bEdit = btn('Redigér','ghost', ()=> openEditModal(it));
         const bBuy = btn('Købt ind','ok', ()=> openPurchaseModal(it));
-        const bDel = btn('Fjern','danger', ()=>{ if(confirm(`Fjern ${it.name}?`)) remove(ref(db,`inventory/${it.id}`)); });
-        actions.append(bCamera,bGallery,bEdit,bBuy,bDel);
+        const bSortiment = isDiscontinued(it)
+          ? btn('Genaktivér','ok', ()=> setDiscontinued(it, false))
+          : btn('Udgået','warn', ()=> setDiscontinued(it, true));
+        actions.append(bCamera,bGallery,bEdit,bBuy,bSortiment);
         row2.append(info, actions);
 
         meta.append(nameRow, stockRow, row2);
@@ -889,9 +908,11 @@
 
     function renderStats(){
       const arr = Object.values(items);
-      statCount.textContent = arr.length;
-      statLow.textContent = arr.filter(lowFlag).length;
-      statSold.textContent = arr.reduce((s,it)=>s+(it.sold||0),0);
+      const active = arr.filter(it => !isDiscontinued(it));
+      statCount.textContent = active.length;
+      statLow.textContent = active.filter(lowFlag).length;
+      statDiscontinued.textContent = arr.filter(isDiscontinued).length;
+      statSold.textContent = active.reduce((s,it)=>s+(it.sold||0),0);
     }
 
     function lowStockItems(){
@@ -905,8 +926,31 @@
 
     function fmtUpdated(ts){
       if(!ts) return 'ukendt';
-      return new Date(ts).toLocaleString('da-DK', {
-        day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+      return new Date(ts).toLocaleDateString('da-DK', {
+        day:'2-digit', month:'2-digit', year:'numeric'
+      });
+    }
+
+    function emailDateKey(ts){
+      if(!ts) return 'Ukendt dato';
+      return fmtUpdated(ts);
+    }
+
+    function byNewestUpdateThenName(a,b){
+      return Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'da');
+    }
+
+    function pushEmailSection(lines, list){
+      const groups = new Map();
+      list.slice().sort(byNewestUpdateThenName).forEach(it=>{
+        const key = emailDateKey(it.updatedAt);
+        if(!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(it);
+      });
+      groups.forEach((group, date)=>{
+        lines.push(date);
+        lines.push('');
+        group.forEach(it => pushEmailItem(lines, it));
       });
     }
 
@@ -948,20 +992,23 @@
       if(!low.length){
         lines.push('Ingen varer er under lav-lager lige nu.');
       } else {
-        lines.push(`Ændret/opdateret de sidste 30 dage (${recent.length})`);
-        lines.push('----------------------------------------');
+        lines.push(`NYLIGT ÆNDRET - sidste 30 dage (${recent.length})`);
+        lines.push('========================================');
         lines.push('');
         if(recent.length){
-          recent.forEach(it => pushEmailItem(lines, it));
+          pushEmailSection(lines, recent);
         } else {
           lines.push('Ingen varer i denne sektion.', '');
         }
 
-        lines.push(`Øvrige varer under lav-lager (${older.length})`);
-        lines.push('----------------------------------------');
+        // Fire tomme linjer mellem sektionerne gør mailen lettere at læse på telefonen.
+        lines.push('', '', '', '');
+
+        lines.push(`ÆLDRE VARER - mere end 30 dage siden ændring (${older.length})`);
+        lines.push('========================================');
         lines.push('');
         if(older.length){
-          older.forEach(it => pushEmailItem(lines, it));
+          pushEmailSection(lines, older);
         } else {
           lines.push('Ingen varer i denne sektion.', '');
         }
@@ -1061,8 +1108,23 @@
     }
 
     function changeStock(it, delta){
+      if(isDiscontinued(it)){ toast('Varen er markeret som udgået'); return; }
       const newStock = Math.max(0, +(((it.stock||0) + delta).toFixed(3)));
       update(ref(db,`inventory/${it.id}`), { stock: newStock, updatedAt: Date.now() });
+    }
+
+    async function setDiscontinued(it, value){
+      if(!it) return;
+      const text = value
+        ? `Markér ${it.name} som udgået af sortiment? Den fjernes fra lav-lager, indkøbsliste og emails.`
+        : `Genaktivér ${it.name} i sortimentet?`;
+      if(!confirm(text)) return;
+      await update(ref(db,`inventory/${it.id}`), {
+        discontinued: !!value,
+        discontinuedAt: value ? Date.now() : null,
+        updatedAt: Date.now()
+      });
+      toast(value ? 'Vare markeret som udgået' : 'Vare genaktiveret');
     }
 
     // ─── Edit item modal ───
@@ -1076,6 +1138,7 @@
       em.unit.value = it.unit || 'stk';
       em.step.value = it.step || 1;
       em.reorder.value = it.reorder ?? defaultReorder();
+      em.discontinued.checked = isDiscontinued(it);
       em.imgFile.value = '';
       em.root.classList.add('open');
       em.root.setAttribute('aria-hidden','false');
@@ -1093,6 +1156,8 @@
         unit: em.unit.value.trim() || 'stk',
         step: Math.max(0.01, Number(String(em.step.value || 1).replace(',','.')) || 1),
         reorder: parseNum(em.reorder.value),
+        discontinued: !!em.discontinued.checked,
+        discontinuedAt: em.discontinued.checked ? (editItem.discontinuedAt || Date.now()) : null,
         updatedAt: Date.now()
       };
       const f = em.imgFile.files && em.imgFile.files[0];
@@ -1128,6 +1193,7 @@
 
     async function handlePurchase(it, qty, price, note, reorder){
       if(!it || qty<=0) return;
+      if(isDiscontinued(it)){ toast('Varen er udgået af sortiment'); return; }
       const newStock = (it.stock||0) + qty;
       const upd = { stock: newStock, updatedAt: Date.now() };
       if(reorder!==null && reorder!==undefined) upd.reorder = reorder;
@@ -1179,7 +1245,7 @@
       const unmatched=[];
       sums.forEach((qty,csvName)=>{
         const canon = aliasToCanonical(csvName)||csvName;
-        const entry = Object.values(items).find(it=>normalizeName(it.name)===normalizeName(canon));
+        const entry = Object.values(items).find(it=>!isDiscontinued(it) && normalizeName(it.name)===normalizeName(canon));
         if(entry){
           const soldNew = (entry.sold||0)+qty;
           const stockNew = deduct ? Math.max(0, (entry.stock||0)-qty) : (entry.stock||0);
@@ -1206,7 +1272,7 @@
         const ro=document.createElement('input'); ro.type='number'; ro.step='0.25'; ro.min='0'; ro.placeholder='Lav-lager'; ro.style.width='90px'; ro.value = defaultReorder();
         const btnAdd=btn('Tilføj','primary',()=>{
           const newId = id();
-          const entry = { id:newId, name:u.name, cat:sel.value, img:'', sold:u.sold, stock:0, unit:unit.value||'stk', step:Math.max(0.01, Number(step.value||1)), reorder:Number(ro.value||defaultReorder()), updatedAt: Date.now() };
+          const entry = { id:newId, name:u.name, cat:sel.value, img:'', sold:u.sold, stock:0, unit:unit.value||'stk', step:Math.max(0.01, Number(step.value||1)), reorder:Number(ro.value||defaultReorder()), discontinued:false, discontinuedAt:null, updatedAt: Date.now() };
           set(ref(db,`inventory/${newId}`), entry);
           row.remove(); if(!unmatchedList.children.length) unmatchedSection.classList.add('hidden');
         });
@@ -1222,7 +1288,7 @@
         set(ref(db,'inventory'), {});
         data.items.forEach(x=>{
           const newId = x.id || id();
-          const entry = { id:newId, name:x.name, cat:x.cat, img:x.img||'', sold:0, stock:x.stock||0, unit:x.unit||'', step:x.step||1, reorder: x.reorder ?? defaultReorder(), updatedAt: Date.now() };
+          const entry = { id:newId, name:x.name, cat:x.cat, img:x.img||'', sold:0, stock:x.stock||0, unit:x.unit||'', step:x.step||1, reorder: x.reorder ?? defaultReorder(), discontinued: !!x.discontinued, discontinuedAt: x.discontinuedAt || null, updatedAt: Date.now() };
           set(ref(db,`inventory/${newId}`), entry);
         });
         alert(`Importeret ${data.items.length} varer`);
@@ -1285,6 +1351,8 @@
         step: Math.max(0.01, Number(document.getElementById('newStep').value||1)),
         reorder: Number(document.getElementById('newReorder').value||defaultReorder()),
         sold: 0,
+        discontinued: false,
+        discontinuedAt: null,
         updatedAt: Date.now(),
         imgUpdatedAt: imgUrl ? Date.now() : 0,
       };
