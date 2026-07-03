@@ -3,178 +3,365 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kiosk — Inventar 2.0</title>
+  <title>Kiosk — Sortiment liste</title>
   <meta name="color-scheme" content="dark light" />
   <style>
     :root{
-      --bg: #0c111b;
-      --panel: #121827;
-      --muted: #1a2233;
-      --muted-2:#0f1624;
-      --text: #e8eef7;
-      --sub: #b7c3d6;
-      --accent: #7aa2ff;
-      --accent-2:#9bc2ff;
+      --bg: #080d16;
+      --bg-soft: #0d1421;
+      --panel: rgba(18, 26, 41, .92);
+      --panel-solid: #121a29;
+      --muted: #1a2435;
+      --muted-2:#101827;
+      --text: #edf3fb;
+      --sub: #a9b8ce;
+      --accent: #8fb3ff;
+      --accent-2:#b7ccff;
       --danger: #ff6b6b;
       --warn: #ffb020;
-      --ok: #17c964;
-      --border: #263246;
-      --shadow: 0 8px 24px rgba(0,0,0,.35);
-      --header-h: 0px; /* overskrives via JS */
+      --ok: #29d47d;
+      --border: #2c3a52;
+      --shadow: 0 14px 36px rgba(0,0,0,.32);
+      --header-h: 0px;
+      --radius: 18px;
+      --tap: 44px;
     }
     [data-theme="light"]{
-      --bg: #f7f9fc;
-      --panel:#ffffff;
-      --muted:#f0f3f9;
+      --bg: #f5f7fb;
+      --bg-soft: #eef3fb;
+      --panel: rgba(255,255,255,.94);
+      --panel-solid:#ffffff;
+      --muted:#eef3fb;
       --muted-2:#f7f9fc;
-      --text:#0c1627;
-      --sub:#4a5b76;
+      --text:#111827;
+      --sub:#53647c;
       --accent:#305dff;
       --accent-2:#5f82ff;
       --danger:#c92a2a;
-      --warn:#b98900;
-      --ok:#0a8f4d;
-      --border:#dbe3f1;
-      --shadow: 0 10px 24px rgba(11,17,27,.08);
+      --warn:#9a6b00;
+      --ok:#07884a;
+      --border:#d7e0ef;
+      --shadow: 0 12px 28px rgba(15,23,42,.08);
     }
 
     *{ box-sizing: border-box; }
-    html,body{ height: 100%; }
+    html,body{ min-height:100%; }
     body{
-      margin:0; padding-top:var(--header-h);
-      background: radial-gradient(80% 80% at 30% 10%, var(--muted-2), var(--bg));
+      margin:0;
+      padding-top:var(--header-h);
+      background:
+        radial-gradient(900px 600px at 20% -10%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 70%),
+        linear-gradient(180deg, var(--bg-soft), var(--bg));
       color:var(--text);
       font: 15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial;
+      -webkit-font-smoothing: antialiased;
     }
+    .hidden{ display:none !important; }
 
-    /* ─── Header / Toolbar ─── */
+    /* ─── App shell / top controls ─── */
     header{
       position:fixed; inset:0 0 auto 0; z-index:1000;
-      display:flex; gap:14px; align-items:center; flex-wrap:wrap;
-      background: color-mix(in oklab, var(--panel) 82%, transparent);
-      backdrop-filter: blur(10px) saturate(120%);
+      display:grid; grid-template-columns:auto minmax(260px,1fr); gap:12px 18px; align-items:center;
+      background: color-mix(in oklab, var(--panel-solid) 88%, transparent);
+      backdrop-filter: blur(14px) saturate(140%);
       border-bottom:1px solid var(--border);
-      padding: 12px 16px;
+      padding: 12px 18px;
       transform: translateY(0);
-      transition: transform .25s ease;
+      transition: transform .22s ease, box-shadow .22s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,.16);
     }
     header.hidden-on-scroll{ transform: translateY(-100%); }
-    h1{ margin:0; font-size:18px; letter-spacing:.2px; }
+    h1{ margin:0; font-size:19px; letter-spacing:.2px; white-space:nowrap; }
+    h1::after{ content:"v4"; margin-left:8px; font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; vertical-align:middle; }
     .toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .grow{ flex:1 1 260px; }
+    .grow{ flex:1 1 420px; }
 
-    .btn{ appearance:none; border:1px solid var(--border); background:var(--muted); color:var(--text);
-      padding:8px 12px; border-radius:12px; cursor:pointer; font-weight:600; box-shadow: var(--shadow); white-space:nowrap; }
-    .btn:hover{ border-color: color-mix(in oklab, var(--border), var(--accent) 40%); }
-    .btn.primary{ background:var(--accent); border-color: transparent; color:#071021; }
+    .btn{
+      appearance:none;
+      min-height:var(--tap);
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, var(--muted), var(--muted-2));
+      color:var(--text);
+      padding:9px 13px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      box-shadow: none;
+      white-space:nowrap;
+      transition: transform .08s ease, border-color .15s ease, background .15s ease;
+    }
+    .btn:hover{ border-color: color-mix(in oklab, var(--border), var(--accent) 55%); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{ background:linear-gradient(180deg, var(--accent-2), var(--accent)); border-color: transparent; color:#071021; }
     .btn.ghost{ background:transparent; }
-    .btn.danger{ background:transparent; color:var(--danger); border-color: color-mix(in oklab, var(--danger), var(--border) 60%); }
-    .btn.ok{ background:transparent; color:var(--ok); border-color: color-mix(in oklab, var(--ok), var(--border) 60%); }
+    .btn.danger{ background:transparent; color:var(--danger); border-color: color-mix(in oklab, var(--danger), var(--border) 55%); }
+    .btn.ok{ background:transparent; color:var(--ok); border-color: color-mix(in oklab, var(--ok), var(--border) 55%); }
 
-    .field{ display:flex; align-items:center; gap:8px; background:var(--muted); border:1px solid var(--border); border-radius:12px; padding:6px 10px; }
-    .field input, .field select{ background:transparent; border:0; color:var(--text); outline:none; font: inherit; min-width:120px; }
-    .switch{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border); border-radius:999px; }
+    .field, .badge, .switch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-height:var(--tap);
+      background:var(--muted);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:7px 11px;
+    }
+    .field input, .field select, .badge input, details input, details select, .dialog input, .dialog select, .email-controls input{
+      background:transparent;
+      border:0;
+      color:var(--text);
+      outline:none;
+      font:inherit;
+      min-width:110px;
+    }
+    .field:focus-within, .email-controls:focus-within{ border-color:var(--accent); }
+    .field input[type="search"]{ width:100%; min-width:170px; }
+    .switch{ border-radius:999px; color:var(--sub); }
+    .badge{ color:var(--sub); }
+    input[type="file"]{ max-width:180px; }
 
-    main{ max-width:1200px; margin: 0 auto; padding: 18px; }
+    main{ max-width:1180px; margin:0 auto; padding:18px; }
 
-    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
-    .tab{ padding:8px 12px; border-radius:999px; border:1px solid var(--border); background:var(--muted-2); color:var(--sub); font-weight:700; cursor:pointer; }
+    .tabs{
+      display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 14px;
+    }
+    .tab{
+      min-height:38px;
+      padding:8px 13px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:color-mix(in oklab, var(--muted-2) 88%, transparent);
+      color:var(--sub);
+      font-weight:800;
+      cursor:pointer;
+    }
     .tab.active{ background:var(--accent); color:#071021; border-color:transparent; }
 
-    .stats{ display:flex; gap:10px; flex-wrap:wrap; margin: 6px 0 12px; }
-    .stat{ display:flex; gap:8px; align-items:center; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:8px 12px; }
+    .stats{
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin: 6px 0 14px;
+    }
+    .stat{
+      display:flex; gap:8px; align-items:center; justify-content:center;
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:11px 12px;
+    }
+    .stat strong{ font-size:20px; }
 
-    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
-    .card{ background:var(--panel); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--shadow); }
-    .thumb{ aspect-ratio: 16/10; background:var(--muted-2); display:block; object-fit:cover; }
-    .meta{ padding:12px; display:flex; flex-direction:column; gap:10px; overflow:visible; }
-    .name{ font-weight:800; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
-    .cat{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--sub); border:1px solid var(--border); border-radius:999px; padding:2px 8px; }
-    .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-    .row-actions{ flex-wrap: wrap; }
-    .row-actions .pill{ flex:1 1 auto; min-width: 180px; }
+    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:13px; }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      box-shadow:var(--shadow);
+      position:relative;
+    }
+    .card.low{ border-color:color-mix(in oklab, var(--warn) 70%, var(--border)); }
+    .card.low::before{
+      content:"Lavt lager";
+      position:absolute; top:8px; left:8px; z-index:2;
+      padding:4px 8px; border-radius:999px;
+      background:color-mix(in oklab, var(--warn) 25%, var(--panel-solid));
+      border:1px solid color-mix(in oklab, var(--warn) 70%, var(--border));
+      color:var(--text); font-size:11px; font-weight:800;
+    }
+    .thumb{ aspect-ratio:16/10; width:100%; background:var(--muted-2); display:block; object-fit:cover; }
+    .meta{ padding:12px; display:flex; flex-direction:column; gap:9px; min-width:0; }
+    .name{ font-weight:900; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
+    .name > div{ overflow-wrap:anywhere; }
+    .cat{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--sub); border:1px solid var(--border); border-radius:999px; padding:3px 8px; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .row-actions{ align-items:flex-start; }
+    .row-actions .pill{ flex:1 1 auto; min-width:160px; }
     .row-actions .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
-    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; background:var(--muted-2); border:1px solid var(--border); color:var(--text); white-space:nowrap; }
+    .pill{ font-size:12px; padding:6px 9px; border-radius:999px; background:var(--muted-2); border:1px solid var(--border); color:var(--text); white-space:nowrap; }
     .qty{ display:inline-flex; align-items:center; gap:6px; }
-    .qty button{ padding:6px 10px; border-radius:10px; border:1px solid var(--border); background:var(--muted-2); color:var(--text); cursor:pointer; }
-    .qty .val{ padding:4px 8px; border-radius:8px; background:var(--muted-2); border:1px solid var(--border); cursor:pointer; }
-    .badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--border); border-radius:10px; background:var(--muted-2); }
-    .empty{ opacity:.7; border:1px dashed var(--border); padding:16px; border-radius:12px; text-align:center; }
-    .low{ outline:2px solid color-mix(in oklab, var(--warn) 60%, transparent); }
+    .qty button{ min-height:38px; padding:6px 12px; border-radius:12px; border:1px solid var(--border); background:var(--muted-2); color:var(--text); cursor:pointer; font-weight:900; }
+    .qty .val{ min-height:38px; display:inline-flex; align-items:center; padding:6px 9px; border-radius:12px; background:var(--muted-2); border:1px solid var(--border); cursor:pointer; }
+    .empty{ opacity:.76; border:1px dashed var(--border); padding:18px; border-radius:var(--radius); text-align:center; background:var(--panel); }
 
-    details{ background:var(--muted-2); border:1px solid var(--border); border-radius:12px; padding:8px 12px; }
-    summary{ cursor:pointer; font-weight:800; }
+    details{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; box-shadow:var(--shadow); }
+    summary{ cursor:pointer; font-weight:900; }
+    details[open] summary{ margin-bottom:10px; }
+    code{ color:var(--accent-2); }
 
     .list{ display:flex; flex-direction:column; gap:8px; }
-    .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; flex-wrap:wrap; }
+    .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:14px; padding:10px 11px; flex-wrap:wrap; }
+    .list-item input, .list-item select{ min-height:38px; border:1px solid var(--border); border-radius:12px; padding:6px 9px; color:var(--text); background:var(--panel-solid); }
+
+    .email-controls{
+      margin-top:10px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+      padding-top:10px;
+      border-top:1px solid var(--border);
+    }
+    .email-controls input{
+      min-height:var(--tap);
+      min-width:260px;
+      background:var(--muted-2);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:9px 12px;
+    }
 
     /* Modal */
-    .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.45); z-index:2000; }
+    .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:2000; padding:14px; }
     .modal.open{ display:grid; }
-    .dialog{ width:min(520px, 92vw); background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow); }
-    .dialog h2{ margin:0 0 8px; font-size:18px; }
-    .dialog .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    .dialog .actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    .dialog{ width:min(560px, 94vw); background:var(--panel-solid); border:1px solid var(--border); border-radius:20px; padding:16px; box-shadow: var(--shadow); }
+    .dialog h2{ margin:0 0 10px; font-size:19px; }
+    .dialog .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+    .dialog label{ color:var(--sub); font-weight:700; }
+    .dialog input, .dialog select{ margin-top:4px; min-height:40px; border:1px solid var(--border); border-radius:12px; padding:8px 10px; background:var(--muted-2); }
+    .dialog .actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
 
     /* Toast */
-    .toast{ position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--panel); border:1px solid var(--border); padding:10px 14px; border-radius:10px; box-shadow: var(--shadow); display:none; }
+    .toast{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:var(--panel-solid); border:1px solid var(--border); padding:11px 14px; border-radius:14px; box-shadow:var(--shadow); display:none; z-index:3000; }
     .toast.show{ display:block; }
 
-    @media (max-width: 480px){
-      .grid{ grid-template-columns: 1fr; }
-      .row-actions .actions{ width:100%; justify-content:flex-start; }
-      .btn{ padding:6px 10px; }
+    @media (max-width: 760px){
+      :root{ --tap:42px; }
+      body{ font-size:14px; }
+      header{
+        display:block;
+        padding:10px;
+        max-height:58vh;
+        overflow:auto;
+      }
+      h1{ font-size:18px; margin-bottom:8px; }
+      .toolbar{ gap:7px; margin-top:7px; }
+      .toolbar.grow{ display:grid; grid-template-columns:1fr; }
+      .field{ width:100%; }
+      .field input, .field select{ min-width:0; width:100%; }
+      .switch, .badge{ flex:1 1 auto; justify-content:center; }
+      .toolbar > .btn, .toolbar details{ flex:1 1 auto; }
+      input[type="file"]{ max-width:140px; }
+      main{ padding:12px; }
+      .tabs{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin:0 -12px 12px; padding-left:12px; scrollbar-width:none; }
+      .tabs::-webkit-scrollbar{ display:none; }
+      .tab{ flex:0 0 auto; min-height:36px; padding:7px 12px; }
+      .stats{ gap:8px; }
+      .stat{ flex-direction:column; gap:1px; padding:9px 5px; font-size:12px; }
+      .stat strong{ font-size:18px; }
+      .grid{ grid-template-columns:1fr; gap:10px; }
+      .card{ display:grid; grid-template-columns:86px 1fr; min-height:128px; }
+      .card.low::before{ top:6px; left:6px; font-size:10px; padding:3px 6px; }
+      .thumb{ width:86px; height:100%; min-height:128px; aspect-ratio:auto; }
+      .meta{ padding:10px; gap:7px; overflow:hidden; }
+      .name{ font-size:15px; gap:5px; }
+      .cat{ font-size:11px; padding:2px 6px; }
+      .row{ align-items:stretch; }
+      .qty{ width:100%; display:grid; grid-template-columns:40px 1fr 40px; gap:5px; }
+      .qty button, .qty .val{ min-height:38px; justify-content:center; }
+      .pill{ white-space:normal; width:100%; }
+      .row-actions .actions{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-left:0; }
+      .row-actions .actions .btn{ width:100%; min-height:38px; padding:7px 8px; }
+      details{ padding:10px; }
+      .list-item{ align-items:stretch; }
+      .list-item > div{ width:100%; }
+      .list-item input, .list-item select{ width:100% !important; }
+      .email-controls{ flex-direction:column; align-items:stretch; }
+      .email-controls input, .email-controls .btn{ width:100%; min-width:0; }
+      .modal{ place-items:end center; padding:0; }
+      .dialog{ width:100%; max-height:92vh; overflow:auto; border-radius:20px 20px 0 0; padding:16px; }
+      .dialog .grid2{ grid-template-columns:1fr; }
+      .dialog .actions{ display:grid; grid-template-columns:1fr 1fr; }
+      .dialog .actions .btn{ width:100%; }
     }
-  </style>
+
+    @media (max-width: 420px){
+      .card{ grid-template-columns:76px 1fr; }
+      .thumb{ width:76px; min-height:126px; }
+      .row-actions .actions{ grid-template-columns:1fr; }
+    }
+
+
+    /* ─── v5 streamlined layout ─── */
+    h1::after{ content:none !important; }
+    .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .version-pill{ font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; }
+    header{ grid-template-columns:auto minmax(0,1fr); gap:12px; padding:10px 14px; }
+    .top-controls{ justify-content:flex-end; flex-wrap:nowrap; min-width:0; }
+    .top-search{ flex:1 1 360px; max-width:460px; }
+    .sort-field{ flex:0 0 auto; }
+    .compact-switch{ flex:0 0 auto; }
+    .tools-panel{ margin:0 0 14px; }
+    .admin-tools{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+    .nested-tool{ margin-top:10px; box-shadow:none; }
+    .add-form{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:8px; align-items:center; }
+    .add-form input, .add-form select{ min-height:var(--tap); border:1px solid var(--border); border-radius:14px; padding:8px 10px; color:var(--text); background:var(--muted-2); }
+    .file-badge{ justify-content:space-between; overflow:hidden; }
+    .file-badge input{ max-width:130px; }
+    .grid{ grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:10px; }
+    .card{ display:grid; grid-template-columns:86px minmax(0,1fr); min-height:112px; overflow:visible; }
+    .thumb{ width:66px; height:66px; min-height:0; aspect-ratio:1; border-radius:999px; margin:14px 0 14px 14px; border:1px solid var(--border); background:var(--muted-2); align-self:start; }
+    .meta{ padding:10px 12px; }
+    .name{ font-size:15px; }
+    .row-actions .actions{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; width:100%; margin-left:0; }
+    .row-actions .actions .btn{ min-height:36px; padding:6px 8px; }
+    .card.low::before{ top:-7px; left:14px; }
+
+    @media (max-width: 760px){
+      body{ padding-top:var(--header-h); }
+      header{ display:block; padding:9px 10px; max-height:none; overflow:visible; }
+      .brand{ justify-content:space-between; margin-bottom:8px; }
+      h1{ margin:0; font-size:19px; }
+      .top-controls{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+      .top-search{ grid-column:1/-1; max-width:none; }
+      .sort-field{ grid-column:1/-1; }
+      .compact-switch{ justify-content:center; }
+      .tools-panel details{ box-shadow:none; }
+      .admin-tools{ display:grid; grid-template-columns:1fr 1fr; }
+      .admin-tools .badge, .admin-tools .btn{ width:100%; justify-content:center; }
+      .add-form{ grid-template-columns:1fr; }
+      .grid{ grid-template-columns:1fr; }
+      .card{ grid-template-columns:70px minmax(0,1fr); min-height:auto; }
+      .thumb{ width:52px; height:52px; margin:12px 0 12px 10px; }
+      .row-actions .actions{ grid-template-columns:1fr 1fr; }
+      .field input[type="search"]{ min-width:0; }
+    }
+
+    @media (max-width: 420px){
+      .admin-tools{ grid-template-columns:1fr; }
+      .row-actions .actions{ grid-template-columns:1fr 1fr; }
+      .card{ grid-template-columns:64px minmax(0,1fr); }
+      .thumb{ width:48px; height:48px; }
+    }
+
+</style>
 </head>
 <body>
   <!-- ───────────────── Header / Controls ───────────────── -->
   <header>
-    <h1>Inventar 2.0</h1>
-    <div class="toolbar grow">
-      <div class="field" style="flex:1">
+    <div class="brand">
+      <h1>Sortiment liste</h1>
+      <span class="version-pill">v5</span>
+    </div>
+    <div class="toolbar grow top-controls">
+      <div class="field top-search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2a8 8 0 105.293 14.293l4.207 4.207 1.414-1.414-4.207-4.207A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
-        <input id="q" type="search" placeholder="Søg varer (navn, kategori)…" />
+        <input id="q" type="search" placeholder="Søg vare…" />
       </div>
-      <div class="field">
+      <div class="field sort-field">
         <label for="sort">Sortér</label>
         <select id="sort">
-          <option value="name">Navn (A→Å)</option>
-          <option value="stockAsc">Lager (lav→høj)</option>
-          <option value="stockDesc">Lager (høj→lav)</option>
-          <option value="soldDesc">Solgt (høj→lav)</option>
+          <option value="name">Navn</option>
+          <option value="stockAsc">Lager lav→høj</option>
+          <option value="stockDesc">Lager høj→lav</option>
+          <option value="soldDesc">Solgt mest</option>
           <option value="updatedDesc">Senest opdateret</option>
         </select>
       </div>
-      <label class="switch"><input id="onlyLow" type="checkbox"/> Kun lavt lager</label>
-      <label class="switch"><input id="themeToggle" type="checkbox"/> Lys tilstand</label>
-    </div>
-
-    <div class="toolbar">
-      <label class="badge">
-        <span>Upload CSV</span>
-        <input id="csvInput" type="file" accept=".csv,text/csv">
-      </label>
-      <label class="badge"><input id="cbDeduct" type="checkbox" checked><span>Fratræk salg ved upload</span></label>
-      <label class="badge"><span>Importér JSON</span><input id="jsonInput" type="file" accept="application/json"></label>
-      <button class="btn" id="exportJSON">Eksportér JSON</button>
-      <button class="btn ghost" id="downloadTemplate">CSV-skabelon</button>
-      <button class="btn" id="exportPurchases">Eksportér indkøb (CSV)</button>
-      <button class="btn" id="resetSales">Nulstil solgt</button>
-      <details>
-        <summary>Tilføj vare</summary>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <input id="newName" type="text" placeholder="Varenavn" />
-          <select id="newCat"></select>
-          <!-- Fjernet capture, så galleri/PC kan vælges -->
-          <input id="newImgFile" type="file" accept="image/*" />
-          <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
-          <input id="newUnit" type="text" placeholder="Enhed" />
-          <input id="newStep" type="number" step="0.25" min="0.25" placeholder="Trin" />
-          <input id="newReorder" type="number" step="0.25" min="0" placeholder="Lav-lager grænse" />
-          <button class="btn primary" id="addItem">Tilføj</button>
-        </div>
-      </details>
+      <label class="switch compact-switch"><input id="onlyLow" type="checkbox"/> Lavt lager</label>
+      <label class="switch compact-switch"><input id="themeToggle" type="checkbox"/> Lys</label>
     </div>
   </header>
 
@@ -188,13 +375,48 @@
       <div class="stat"><strong id="statSold">0</strong> solgt (periode)</div>
     </div>
 
+    <section class="tools-panel">
+      <details>
+        <summary>Værktøjer: import, eksport og ny vare</summary>
+        <div class="admin-tools">
+          <label class="badge">
+            <span>Upload CSV</span>
+            <input id="csvInput" type="file" accept=".csv,text/csv">
+          </label>
+          <label class="badge"><input id="cbDeduct" type="checkbox" checked><span>Fratræk salg</span></label>
+          <label class="badge"><span>Importér JSON</span><input id="jsonInput" type="file" accept="application/json"></label>
+          <button class="btn" id="exportJSON">Eksportér JSON</button>
+          <button class="btn ghost" id="downloadTemplate">CSV-skabelon</button>
+          <button class="btn" id="exportPurchases">Eksportér indkøb</button>
+          <button class="btn danger" id="resetSales">Nulstil solgt</button>
+        </div>
+        <details class="nested-tool">
+          <summary>Tilføj ny vare</summary>
+          <div class="add-form">
+            <input id="newName" type="text" placeholder="Varenavn" />
+            <select id="newCat"></select>
+            <label class="badge file-badge"><span>Tag billede</span><input id="newImgFile" type="file" accept="image/*" capture="environment" /></label>
+            <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
+            <input id="newUnit" type="text" placeholder="Enhed" />
+            <input id="newStep" type="number" step="0.25" min="0.25" placeholder="Trin" />
+            <input id="newReorder" type="number" step="0.25" min="0" placeholder="Lav-lager grænse" />
+            <button class="btn primary" id="addItem">Tilføj vare</button>
+          </div>
+        </details>
+      </details>
+    </section>
+
     <div class="grid" id="cards"></div>
 
     <section id="shoppingSection" style="margin-top:20px">
       <details>
         <summary>🧾 Indkøbsliste (varer under grænsen) & bulk-indkøb</summary>
         <div class="list" id="shoppingList"></div>
-        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px">
+        <div class="email-controls">
+          <input id="emailRecipient" type="email" placeholder="Modtager-email til indkøbsliste" />
+          <button class="btn primary" id="emailLowStock">Færdig – send automatisk</button>
+          <button class="btn" id="openEmailClient">Åbn som mail</button>
+          <button class="btn" id="copyLowStock">Kopiér liste</button>
           <button class="btn ok" id="purchaseSelected">Markér som købt</button>
         </div>
       </details>
@@ -243,6 +465,40 @@
     </div>
   </div>
 
+  <!-- ───────────────── Edit Item Modal ───────────────── -->
+  <div class="modal" id="editModal" aria-hidden="true">
+    <div class="dialog">
+      <h2 id="emTitle">Redigér vare</h2>
+      <div class="grid2">
+        <label>Varenavn
+          <input id="emName" type="text" style="width:100%"/>
+        </label>
+        <label>Kategori
+          <select id="emCat" style="width:100%"></select>
+        </label>
+        <label>Lager
+          <input id="emStock" type="number" step="0.25" min="0" style="width:100%"/>
+        </label>
+        <label>Enhed
+          <input id="emUnit" type="text" style="width:100%"/>
+        </label>
+        <label>Trin ved +/-
+          <input id="emStep" type="number" step="0.25" min="0.01" style="width:100%"/>
+        </label>
+        <label>Lav-lager grænse
+          <input id="emReorder" type="number" step="0.25" min="0" style="width:100%"/>
+        </label>
+        <label style="grid-column:1/-1">Nyt billede (valgfrit)
+          <input id="emImgFile" type="file" accept="image/*" capture="environment" style="width:100%"/>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="emCancel">Annullér</button>
+        <button class="btn primary" id="emSave">Gem ændringer</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script type="module">
@@ -260,6 +516,10 @@
       messagingSenderId: "993863941891",
       appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
     };
+
+    // Automatisk email kræver en backend/Firebase Function.
+    // Indsæt HTTPS-URL'en til funktionen her, når den er deployet.
+    const AUTO_EMAIL_FUNCTION_URL = "";
 
     const app = initializeApp(cfg);
     const db  = getDatabase(app);
@@ -288,6 +548,10 @@
 
     const shoppingList = document.getElementById('shoppingList');
     const purchaseSelectedBtn = document.getElementById('purchaseSelected');
+    const emailRecipientEl = document.getElementById('emailRecipient');
+    const emailLowStockBtn = document.getElementById('emailLowStock');
+    const openEmailClientBtn = document.getElementById('openEmailClient');
+    const copyLowStockBtn = document.getElementById('copyLowStock');
 
     const purchaseLogEl = document.getElementById('purchaseLog');
 
@@ -306,6 +570,20 @@
       save: document.getElementById('pmSave'),
     };
 
+    const em = {
+      root: document.getElementById('editModal'),
+      title: document.getElementById('emTitle'),
+      name: document.getElementById('emName'),
+      cat: document.getElementById('emCat'),
+      stock: document.getElementById('emStock'),
+      unit: document.getElementById('emUnit'),
+      step: document.getElementById('emStep'),
+      reorder: document.getElementById('emReorder'),
+      imgFile: document.getElementById('emImgFile'),
+      cancel: document.getElementById('emCancel'),
+      save: document.getElementById('emSave'),
+    };
+
     const CATS = [
       "Alle","Sodavand & Drikke","Slik","Chokolade & Barer","Chips & Snacks",
       "Popcorn","Phantom (udstyr)","Mad & Kaffen","Service & Andet","Pladsen","Rengøring"
@@ -314,6 +592,7 @@
     // udfyld kategori dropdown til ny vare
     const newCat = document.getElementById('newCat');
     CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; newCat.appendChild(o); });
+    CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; em.cat.appendChild(o); });
 
     // ─── State ───
     let items = {};            // id -> item
@@ -330,6 +609,9 @@
       themeToggle.checked = saved === 'light';
     })();
 
+    emailRecipientEl.value = localStorage.getItem('lowStockEmail') || '';
+    emailRecipientEl.addEventListener('input', () => localStorage.setItem('lowStockEmail', emailRecipientEl.value.trim()));
+
     themeToggle.addEventListener('change',()=>{
       const t = themeToggle.checked ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', t);
@@ -345,57 +627,81 @@
     onValue(ref(db,'purchases'), snap=>{ purchases = snap.val() || {}; renderPurchaseLog(); });
 
     // ─── Helpers ───
-    async function compressImage(file, maxW=1400){
+    async function compressImage(file, maxW=900, quality=0.78){
       return new Promise((resolve,reject)=>{
         const img=new Image(); const url=URL.createObjectURL(file);
         img.onload=()=>{
           const scale=Math.min(1, maxW/img.width);
-          const w=img.width*scale, h=img.height*scale;
+          const w=Math.max(1, Math.round(img.width*scale));
+          const h=Math.max(1, Math.round(img.height*scale));
           const c=document.createElement('canvas'); c.width=w; c.height=h;
           const ctx=c.getContext('2d');
           ctx.drawImage(img,0,0,w,h);
           c.toBlob(b=>{
             URL.revokeObjectURL(url);
             resolve(b||file);
-          }, 'image/jpeg', 0.85);
+          }, 'image/jpeg', quality);
         };
-        img.onerror=reject; img.src=url;
+        img.onerror=(err)=>{ URL.revokeObjectURL(url); reject(err); };
+        img.src=url;
       });
     }
 
-    // Versionér en URL med timestamp så vi bypasser cache
+    function blobToDataURL(blob){
+      return new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function imageFileToDataURL(file){
+      const small = await compressImage(file, 560, 0.72);
+      return await blobToDataURL(small);
+    }
+
+    // Versionér kun normale URL'er. Data-URL billeder må ikke få ?v=..., ellers kan de gå i stykker.
     function versioned(url, ts){
       if(!url) return url;
+      if(url.startsWith('data:') || url.startsWith('blob:')) return url;
       const sep = url.includes('?') ? '&' : '?';
       return `${url}${sep}v=${encodeURIComponent(ts||Date.now())}`;
     }
 
     async function uploadImage(file, path){
-      try {
-        const small = await compressImage(file);
-        const r = sRef(storage, path);
-        // Vigtig: slå caching fra og sæt korrekt contentType
-        const meta = {
-          contentType: small.type || 'image/jpeg',
-          cacheControl: 'no-cache, no-store, must-revalidate'
-        };
-        const snap = await uploadBytes(r, small, meta);
-        const url = await getDownloadURL(snap.ref);
-        return url;
-      } catch (err) {
-        console.error('Upload fejl:', err);
-        throw err;
+      const small = await compressImage(file);
+      const r = sRef(storage, path);
+      const meta = {
+        contentType: small.type || 'image/jpeg',
+        cacheControl: 'no-cache, no-store, must-revalidate'
+      };
+      const snap = await uploadBytes(r, small, meta);
+      return await getDownloadURL(snap.ref);
+    }
+
+    async function saveImageForItem(file, itemId){
+      if(!file) return null;
+      const path = `inventory/${itemId}-${Date.now()}.jpg`;
+      try{
+        return await uploadImage(file, path);
+      }catch(err){
+        console.warn('Firebase Storage upload fejlede. Gemmer billedet direkte i databasen som fallback.', err);
+        try{
+          const dataUrl = await imageFileToDataURL(file);
+          toast('Storage-upload fejlede – billedet blev gemt direkte i databasen', 2600);
+          return dataUrl;
+        }catch(fallbackErr){
+          console.error('Billed-fallback fejlede:', fallbackErr);
+          alert('Kunne ikke gemme billede. Tjek Firebase Storage Rules eller prøv et mindre billede.');
+          return null;
+        }
       }
     }
 
     async function uploadImageForItem(file, it){
-      try{
-        const url = await uploadImage(file, `inventory/${it.id}.jpg`);
-        return url;
-      }catch(err){
-        alert('Kunne ikke uploade billede: ' + (err && err.message ? err.message : err));
-        return null;
-      }
+      const itemId = typeof it === 'string' ? it : it.id;
+      return await saveImageForItem(file, itemId);
     }
 
     const id = () => push(ref(db,'inventory')).key;
@@ -417,6 +723,8 @@
 
     const toast = (msg, ms=1800) => { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), ms); };
     const defaultReorder = () => Number(localStorage.getItem('defReorder')||'2');
+    const parseNum = v => Math.max(0, Number(String(v ?? 0).replace(',','.')) || 0);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     const lowFlag = it => (it.stock||0) <= (it.reorder ?? defaultReorder());
     const savePrefs = () => {
       localStorage.setItem('onlyLow', onlyLowEl.checked ? '1' : '0');
@@ -473,6 +781,7 @@
         const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '');
         const img = document.createElement('img'); img.className='thumb';
         img.src = it.img ? versioned(it.img, it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
+        img.onerror = ()=>{ img.onerror=null; img.src=placeholderSVG(it.name, catEmoji(it.cat)); };
         img.alt=it.name; card.appendChild(img);
 
         const meta = document.createElement('div'); meta.className='meta';
@@ -510,32 +819,33 @@
         };
 
         const actions = document.createElement('div'); actions.className='actions';
-        // fil-upload til at skifte billede på eksisterende vare (virker på mobil og desktop)
-        const fileInput = document.createElement('input');
-        fileInput.type='file'; fileInput.accept='image/*'; /* ingen capture => galleri/PC muligt */
-        fileInput.style.display='none';
-        card.appendChild(fileInput);
-        fileInput.onchange = async (e)=>{
+        // To billedvalg: kamera på telefon + almindeligt galleri/filvalg.
+        const cameraInput = document.createElement('input');
+        cameraInput.type='file'; cameraInput.accept='image/*'; cameraInput.capture='environment';
+        cameraInput.style.display='none';
+        const galleryInput = document.createElement('input');
+        galleryInput.type='file'; galleryInput.accept='image/*';
+        galleryInput.style.display='none';
+        card.append(cameraInput, galleryInput);
+        const handleImageChange = async (e)=>{
           const f=e.target.files[0];
           if(!f) return;
+          toast('Gemmer billede…');
           const url = await uploadImageForItem(f, it);
           if(url){
-            // Opdater DB (updatedAt versionerer billedet i UI)
             await update(ref(db,`inventory/${it.id}`), { img:url, updatedAt: Date.now() });
             toast('Billede opdateret');
           }
-          // tøm input så samme fil kan vælges igen senere
           e.target.value='';
         };
-        const bImg = btn('Skift billede','ghost', ()=> fileInput.click());
-        const bUnit = btn('Enhed/trin','ghost', ()=>{
-          const u = prompt('Enhed:', it.unit||''); if(u===null) return;
-          const s = prompt('Trin:', String(it.step||1)); if(s===null) return;
-          update(ref(db,`inventory/${it.id}`), { unit:u.trim(), step:Math.max(0.01, Number(s.replace(',','.'))), updatedAt: Date.now() });
-        });
+        cameraInput.onchange = handleImageChange;
+        galleryInput.onchange = handleImageChange;
+        const bCamera = btn('Kamera','ghost', ()=> cameraInput.click());
+        const bGallery = btn('Billede','ghost', ()=> galleryInput.click());
+        const bEdit = btn('Redigér','ghost', ()=> openEditModal(it));
         const bBuy = btn('Købt ind','ok', ()=> openPurchaseModal(it));
         const bDel = btn('Fjern','danger', ()=>{ if(confirm(`Fjern ${it.name}?`)) remove(ref(db,`inventory/${it.id}`)); });
-        actions.append(bImg,bUnit,bBuy,bDel);
+        actions.append(bCamera,bGallery,bEdit,bBuy,bDel);
         row2.append(info, actions);
 
         meta.append(nameRow, stockRow, row2);
@@ -553,13 +863,124 @@
       statSold.textContent = arr.reduce((s,it)=>s+(it.sold||0),0);
     }
 
+    function lowStockItems(){
+      return Object.values(items).filter(lowFlag).sort((a,b)=> (a.cat||'').localeCompare(b.cat||'', 'da') || a.name.localeCompare(b.name,'da'));
+    }
+
+    function fmtQty(v){
+      const n = Number(v || 0);
+      return Number.isInteger(n) ? String(n) : String(+n.toFixed(2)).replace('.', ',');
+    }
+
+    function fmtUpdated(ts){
+      if(!ts) return 'ukendt';
+      return new Date(ts).toLocaleString('da-DK', {
+        day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+      });
+    }
+
+    function buildLowStockEmail(){
+      const low = lowStockItems();
+      const now = new Date().toLocaleString('da-DK', {
+        day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+      });
+      const subject = `Indkøbsliste fra Sortiment liste – ${low.length} varer under grænsen`;
+      const lines = [
+        'Hej,',
+        '',
+        `Her er indkøbslisten fra Sortiment liste (${now}).`,
+        ''
+      ];
+      if(!low.length){
+        lines.push('Ingen varer er under lav-lager grænsen.');
+      } else {
+        lines.push('Varer under lav-lager grænsen:');
+        lines.push('');
+        low.forEach(it=>{
+          const stock = fmtQty(it.stock || 0);
+          const reorder = fmtQty(it.reorder ?? defaultReorder());
+          const unit = it.unit || 'stk';
+          const updated = fmtUpdated(it.updatedAt);
+          lines.push(`- ${it.name} | På lager: ${stock} ${unit} | Grænse: ${reorder} | Sidst opdateret: ${updated}`);
+        });
+      }
+      lines.push('', 'Mvh', 'Sortiment liste');
+      return { subject, body: lines.join('\n'), items: low };
+    }
+
+    function openMailClientLowStock(){
+      const { subject, body } = buildLowStockEmail();
+      const to = emailRecipientEl.value.trim().replace(/\s+/g,'');
+      const href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      location.href = href;
+      toast('Åbner email-klient med indkøbslisten');
+    }
+
+    async function sendLowStockEmailAutomatically(){
+      const { subject, body, items: lowItems } = buildLowStockEmail();
+      const to = emailRecipientEl.value.trim().replace(/\s+/g,'');
+      if(!to){
+        alert('Skriv en modtager-email først.');
+        return;
+      }
+      if(!AUTO_EMAIL_FUNCTION_URL){
+        alert('Automatisk email er ikke sat op endnu. Indsæt URL til Firebase Function i AUTO_EMAIL_FUNCTION_URL. Jeg åbner mail-klienten i stedet.');
+        openMailClientLowStock();
+        return;
+      }
+      try{
+        emailLowStockBtn.disabled = true;
+        emailLowStockBtn.textContent = 'Sender…';
+        const res = await fetch(AUTO_EMAIL_FUNCTION_URL, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({
+            to,
+            subject,
+            body,
+            sentAt: Date.now(),
+            items: lowItems.map(it=>({
+              id: it.id,
+              name: it.name,
+              cat: it.cat || '',
+              stock: it.stock || 0,
+              unit: it.unit || 'stk',
+              reorder: it.reorder ?? defaultReorder(),
+              updatedAt: it.updatedAt || null
+            }))
+          })
+        });
+        if(!res.ok) throw new Error(await res.text());
+        toast('Indkøbsliste sendt automatisk');
+      }catch(err){
+        console.error(err);
+        alert('Automatisk email fejlede: ' + (err && err.message ? err.message : err));
+      }finally{
+        emailLowStockBtn.disabled = false;
+        emailLowStockBtn.textContent = 'Færdig – send automatisk';
+      }
+    }
+
+    emailLowStockBtn.addEventListener('click', sendLowStockEmailAutomatically);
+    openEmailClientBtn.addEventListener('click', openMailClientLowStock);
+
+    copyLowStockBtn.addEventListener('click', async()=>{
+      const { body } = buildLowStockEmail();
+      try{
+        await navigator.clipboard.writeText(body);
+        toast('Indkøbsliste kopieret');
+      }catch(err){
+        prompt('Kopiér indkøbslisten herfra:', body);
+      }
+    });
+
     function renderShoppingList(){
       shoppingList.innerHTML = '';
-      const low = Object.values(items).filter(lowFlag).sort((a,b)=> (a.cat||'').localeCompare(b.cat||'', 'da'));
+      const low = lowStockItems();
       if(!low.length){ shoppingList.innerHTML = '<div class="empty">Ingen varer under grænsen 🎉</div>'; return; }
       low.forEach(it=>{
         const row = document.createElement('div'); row.className='list-item';
-        const left = document.createElement('div'); left.innerHTML = `<strong>${it.name}</strong><br><span style="opacity:.8">${it.cat} • Lager: ${it.stock||0} ${it.unit||''} • Grænse: ${it.reorder ?? defaultReorder()}</span>`;
+        const left = document.createElement('div'); left.innerHTML = `<strong>${esc(it.name)}</strong><br><span style="opacity:.8">${esc(it.cat)} • Lager: ${it.stock||0} ${esc(it.unit||'')} • Grænse: ${it.reorder ?? defaultReorder()}</span>`;
         const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px'; right.style.alignItems='center'; right.style.flexWrap='wrap';
         const qty = document.createElement('input'); qty.type='number'; qty.step='0.25'; qty.min='0'; qty.placeholder='Køb mængde'; qty.style.width='120px';
         qty.value = Math.max(0, (it.reorder ?? defaultReorder()) - (it.stock||0));
@@ -621,6 +1042,46 @@
       update(ref(db,`inventory/${it.id}`), { stock: newStock, updatedAt: Date.now() });
     }
 
+    // ─── Edit item modal ───
+    let editItem = null;
+    function openEditModal(it){
+      editItem = it;
+      em.title.textContent = `Redigér – ${it.name}`;
+      em.name.value = it.name || '';
+      em.cat.value = it.cat || CATS[1];
+      em.stock.value = it.stock ?? 0;
+      em.unit.value = it.unit || 'stk';
+      em.step.value = it.step || 1;
+      em.reorder.value = it.reorder ?? defaultReorder();
+      em.imgFile.value = '';
+      em.root.classList.add('open');
+      em.root.setAttribute('aria-hidden','false');
+      setTimeout(()=>em.name.focus(), 0);
+    }
+    em.cancel.onclick = ()=>{ em.root.classList.remove('open'); em.root.setAttribute('aria-hidden','true'); };
+    em.save.onclick = async()=>{
+      if(!editItem) return;
+      const name = em.name.value.trim();
+      if(!name){ alert('Varenavn mangler'); return; }
+      const upd = {
+        name,
+        cat: em.cat.value,
+        stock: parseNum(em.stock.value),
+        unit: em.unit.value.trim() || 'stk',
+        step: Math.max(0.01, Number(String(em.step.value || 1).replace(',','.')) || 1),
+        reorder: parseNum(em.reorder.value),
+        updatedAt: Date.now()
+      };
+      const f = em.imgFile.files && em.imgFile.files[0];
+      if(f){
+        const url = await uploadImageForItem(f, editItem);
+        if(url) upd.img = url;
+      }
+      await update(ref(db,`inventory/${editItem.id}`), upd);
+      em.cancel.click();
+      toast('Vare opdateret');
+    };
+
     // ─── Purchase modal ───
     let modalItem = null;
     function openPurchaseModal(it){
@@ -637,7 +1098,10 @@
       handlePurchase(modalItem, qty, price, note, newReorder);
       pm.cancel.click();
     };
-    addEventListener('keydown', e=>{ if(e.key==='Escape' && pm.root.classList.contains('open')) pm.cancel.click(); });
+    addEventListener('keydown', e=>{
+      if(e.key==='Escape' && pm.root.classList.contains('open')) pm.cancel.click();
+      if(e.key==='Escape' && em.root.classList.contains('open')) em.cancel.click();
+    });
 
     async function handlePurchase(it, qty, price, note, reorder){
       if(!it || qty<=0) return;
@@ -785,12 +1249,7 @@
       let imgUrl = '';
       const file = newImgFile && newImgFile.files && newImgFile.files[0];
       if(file){
-        try{
-          imgUrl = await uploadImage(file, `inventory/${baseId}.jpg`);
-        }catch(err){
-          alert('Billed-upload fejlede: ' + (err && err.message ? err.message : err));
-          return;
-        }
+        imgUrl = await saveImageForItem(file, baseId) || '';
       }
 
       const entry = {
