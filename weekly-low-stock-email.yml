@@ -1,0 +1,36 @@
+name: Weekly low-stock email
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Sunday at 02:00 in Denmark, including daylight saving time.
+    - cron: '0 2 * * 0'
+      timezone: Europe/Copenhagen
+
+jobs:
+  send-low-stock-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --omit=dev
+
+      - name: Send weekly low-stock email
+        run: node scripts/send-low-stock-email.mjs
+        env:
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_CC: ${{ secrets.EMAIL_CC }}
