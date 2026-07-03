@@ -411,7 +411,7 @@
         </div>
         <div class="email-tools">
           <input id="emailRecipient" type="email" placeholder="Modtager-email til indkøbsliste" />
-          <button class="btn primary" id="emailLowStock">Send indkøbsliste</button>
+          <button class="btn primary" id="emailLowStock">Åbn mail med liste</button>
           <button class="btn" id="openEmailClient">Åbn som mail</button>
           <button class="btn" id="copyLowStock">Kopiér liste</button>
         </div>
@@ -538,10 +538,9 @@
       appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
     };
 
-    // Manuel “Send indkøbsliste” fra websitet kræver en backend/Firebase Function.
-    // Den ugentlige automatiske søndagsmail kan køre separat via GitHub Actions.
-    // Indsæt kun en HTTPS Function URL her, hvis knappen i websitet også skal sende direkte.
-    const AUTO_EMAIL_FUNCTION_URL = "";
+    // Den ugentlige automatiske søndagsmail kører via GitHub Actions.
+    // GitHub Secrets/API-nøgler må ikke ligge i denne offentlige HTML-fil.
+    // Derfor åbner knappen her kun en sikker manuel mailkladde.
 
     const app = initializeApp(cfg);
     const db  = getDatabase(app);
@@ -948,52 +947,13 @@
       toast('Åbner email-klient med indkøbslisten');
     }
 
-    async function sendLowStockEmailAutomatically(){
-      const { subject, body, items: lowItems } = buildLowStockEmail();
-      const to = emailRecipientEl.value.trim().replace(/\s+/g,'');
-      if(!to){
-        alert('Skriv en modtager-email først.');
-        return;
-      }
-      if(!AUTO_EMAIL_FUNCTION_URL){
-        alert('Automatisk email er ikke sat op endnu. Indsæt URL til Firebase Function i AUTO_EMAIL_FUNCTION_URL. Jeg åbner mail-klienten i stedet.');
-        openMailClientLowStock();
-        return;
-      }
-      try{
-        emailLowStockBtn.disabled = true;
-        emailLowStockBtn.textContent = 'Sender…';
-        const res = await fetch(AUTO_EMAIL_FUNCTION_URL, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({
-            to,
-            subject,
-            body,
-            sentAt: Date.now(),
-            items: lowItems.map(it=>({
-              id: it.id,
-              name: it.name,
-              cat: it.cat || '',
-              stock: it.stock || 0,
-              unit: it.unit || 'stk',
-              reorder: it.reorder ?? defaultReorder(),
-              updatedAt: it.updatedAt || null
-            }))
-          })
-        });
-        if(!res.ok) throw new Error(await res.text());
-        toast('Indkøbsliste sendt automatisk');
-      }catch(err){
-        console.error(err);
-        alert('Automatisk email fejlede: ' + (err && err.message ? err.message : err));
-      }finally{
-        emailLowStockBtn.disabled = false;
-        emailLowStockBtn.textContent = 'Send indkøbsliste';
-      }
+    function handleEmailButton(){
+      // Den rigtige automatiske søndagsmail sendes af GitHub Actions.
+      // Fra den offentlige GitHub Pages-side åbner vi kun en sikker manuel mailkladde.
+      openMailClientLowStock();
     }
 
-    emailLowStockBtn.addEventListener('click', sendLowStockEmailAutomatically);
+    emailLowStockBtn.addEventListener('click', handleEmailButton);
     openEmailClientBtn.addEventListener('click', openMailClientLowStock);
 
     copyLowStockBtn.addEventListener('click', async()=>{
