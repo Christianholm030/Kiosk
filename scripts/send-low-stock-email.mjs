@@ -31,8 +31,12 @@ const inventory = await response.json();
 const items = Object.values(inventory || {});
 const defaultReorder = Number(process.env.DEFAULT_REORDER || 2);
 
+function isDiscontinued(item) {
+  return !!item.discontinued;
+}
+
 function lowFlag(item) {
-  return Number(item.stock || 0) <= Number(item.reorder ?? defaultReorder);
+  return !isDiscontinued(item) && Number(item.stock || 0) <= Number(item.reorder ?? defaultReorder);
 }
 
 function fmtQty(value) {
@@ -59,7 +63,10 @@ function byNewestUpdateThenName(a, b) {
   return Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'da');
 }
 
-const lowItems = items
+const activeItems = items.filter(item => !isDiscontinued(item));
+const discontinuedItems = items.filter(isDiscontinued);
+
+const lowItems = activeItems
   .filter(lowFlag)
   .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'da'));
 
@@ -113,6 +120,7 @@ const lines = [
   `Dato: ${now}`,
   '',
   `I alt: ${lowItems.length} varer under lav-lager.`,
+  `Udgåede varer ignoreret: ${discontinuedItems.length}`,
   ''
 ];
 
