@@ -648,7 +648,7 @@
     onValue(ref(db,'purchases'), snap=>{ purchases = snap.val() || {}; renderPurchaseLog(); });
 
     // ─── Helpers ───
-    async function compressImage(file, maxW=900, quality=0.78){
+    async function compressImage(file, maxW=520, quality=0.72){
       return new Promise((resolve,reject)=>{
         const img=new Image(); const url=URL.createObjectURL(file);
         img.onload=()=>{
@@ -678,11 +678,13 @@
     }
 
     async function imageFileToDataURL(file){
-      const small = await compressImage(file, 560, 0.72);
+      // Gemmer et lille, komprimeret profilbillede direkte i Realtime Database.
+      // Det er mere stabilt på GitHub Pages end Firebase Storage, fordi Storage rules/bucket ikke kan blokere visningen.
+      const small = await compressImage(file, 420, 0.68);
       return await blobToDataURL(small);
     }
 
-    // Versionér kun normale URL'er. Data-URL billeder må ikke få ?v=..., ellers kan de gå i stykker.
+    // Versionér kun normale URL'er. Data-URL billeder må ikke få ?v=..., ellers går de i stykker.
     function versioned(url, ts){
       if(!url) return url;
       if(url.startsWith('data:') || url.startsWith('blob:')) return url;
@@ -691,7 +693,8 @@
     }
 
     async function uploadImage(file, path){
-      const small = await compressImage(file);
+      // Beholdt som fallback hvis du senere vil bruge Firebase Storage igen.
+      const small = await compressImage(file, 900, 0.78);
       const r = sRef(storage, path);
       const meta = {
         contentType: small.type || 'image/jpeg',
@@ -703,18 +706,17 @@
 
     async function saveImageForItem(file, itemId){
       if(!file) return null;
-      const path = `inventory/${itemId}-${Date.now()}.jpg`;
       try{
-        return await uploadImage(file, path);
+        // Mest robuste løsning: billedet gemmes som et lille profilbillede direkte på varen i databasen.
+        return await imageFileToDataURL(file);
       }catch(err){
-        console.warn('Firebase Storage upload fejlede. Gemmer billedet direkte i databasen som fallback.', err);
+        console.warn('Direkte billed-gem fejlede. Prøver Firebase Storage som fallback.', err);
         try{
-          const dataUrl = await imageFileToDataURL(file);
-          toast('Storage-upload fejlede – billedet blev gemt direkte i databasen', 2600);
-          return dataUrl;
-        }catch(fallbackErr){
-          console.error('Billed-fallback fejlede:', fallbackErr);
-          alert('Kunne ikke gemme billede. Tjek Firebase Storage Rules eller prøv et mindre billede.');
+          const path = `inventory/${itemId}-${Date.now()}.jpg`;
+          return await uploadImage(file, path);
+        }catch(storageErr){
+          console.error('Billed-upload fejlede:', storageErr);
+          alert('Kunne ikke gemme billede. Prøv et mindre billede eller tag et nyt foto.');
           return null;
         }
       }
@@ -801,7 +803,7 @@
       arr.forEach(it=>{
         const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '');
         const img = document.createElement('img'); img.className='thumb';
-        img.src = it.img ? versioned(it.img, it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
+        img.src = it.img ? versioned(it.img, it.imgUpdatedAt || it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
         img.onerror = ()=>{ img.onerror=null; img.src=placeholderSVG(it.name, catEmoji(it.cat)); };
         img.alt=it.name; card.appendChild(img);
 
@@ -844,18 +846,16 @@
         const handleImageChange = async (e)=>{
           const f=e.target.files && e.target.files[0];
           if(!f) return;
-          const previewUrl = URL.createObjectURL(f);
-          img.src = previewUrl;
           toast('Gemmer billede…');
           const savedUrl = await uploadImageForItem(f, it);
           if(savedUrl){
-            await update(ref(db,`inventory/${it.id}`), { img:savedUrl, updatedAt: Date.now() });
-            img.src = versioned(savedUrl, Date.now());
+            const ts = Date.now();
+            img.src = savedUrl; // vis med det samme
+            await update(ref(db,`inventory/${it.id}`), { img:savedUrl, imgUpdatedAt: ts, updatedAt: ts });
             toast('Billede opdateret');
           }else{
-            img.src = it.img ? versioned(it.img, it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
+            img.src = it.img ? versioned(it.img, it.imgUpdatedAt || it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
           }
-          URL.revokeObjectURL(previewUrl);
           e.target.value='';
         };
         const bCamera = fileBtn('Kamera', 'image/*', 'environment', handleImageChange);
@@ -910,32 +910,63 @@
       });
     }
 
+    function isUpdatedWithinLastMonth(it){
+      const ts = Number(it.updatedAt || 0);
+      if(!ts) return false;
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      return Date.now() - ts <= thirtyDaysMs;
+    }
+
+    function pushEmailItem(lines, it){
+      const stock = fmtQty(it.stock || 0);
+      const unit = it.unit || 'stk';
+      const updated = fmtUpdated(it.updatedAt);
+      lines.push(`• ${it.name}`);
+      lines.push(`  På lager: ${stock} ${unit}`);
+      lines.push(`  Sidst opdateret: ${updated}`);
+      lines.push('');
+    }
+
     function buildLowStockEmail(){
       const low = lowStockItems();
+      const recent = low.filter(isUpdatedWithinLastMonth);
+      const older = low.filter(it => !isUpdatedWithinLastMonth(it));
       const now = new Date().toLocaleString('da-DK', {
         day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
       });
-      const subject = `Indkøbsliste fra Sortiment liste – ${low.length} varer under grænsen`;
+      const subject = `Indkøbsliste fra Sortiment liste – ${low.length} varer`;
       const lines = [
         'Hej,',
         '',
-        `Her er indkøbslisten fra Sortiment liste (${now}).`,
+        `Her er indkøbslisten fra Sortiment liste.`,
+        `Dato: ${now}`,
+        '',
+        `I alt: ${low.length} varer under lav-lager.`,
         ''
       ];
+
       if(!low.length){
-        lines.push('Ingen varer er under lav-lager grænsen.');
+        lines.push('Ingen varer er under lav-lager lige nu.');
       } else {
-        lines.push('Varer under lav-lager grænsen:');
+        lines.push(`Ændret/opdateret de sidste 30 dage (${recent.length})`);
+        lines.push('----------------------------------------');
         lines.push('');
-        low.forEach(it=>{
-          const stock = fmtQty(it.stock || 0);
-          const reorder = fmtQty(it.reorder ?? defaultReorder());
-          const unit = it.unit || 'stk';
-          const updated = fmtUpdated(it.updatedAt);
-          lines.push(`- ${it.name} | På lager: ${stock} ${unit} | Grænse: ${reorder} | Sidst opdateret: ${updated}`);
-        });
+        if(recent.length){
+          recent.forEach(it => pushEmailItem(lines, it));
+        } else {
+          lines.push('Ingen varer i denne sektion.', '');
+        }
+
+        lines.push(`Øvrige varer under lav-lager (${older.length})`);
+        lines.push('----------------------------------------');
+        lines.push('');
+        if(older.length){
+          older.forEach(it => pushEmailItem(lines, it));
+        } else {
+          lines.push('Ingen varer i denne sektion.', '');
+        }
       }
-      lines.push('', 'Mvh', 'Sortiment liste');
+      lines.push('Mvh', 'Sortiment liste');
       return { subject, body: lines.join('\n'), items: low };
     }
 
@@ -1067,7 +1098,7 @@
       const f = em.imgFile.files && em.imgFile.files[0];
       if(f){
         const url = await uploadImageForItem(f, editItem);
-        if(url) upd.img = url;
+        if(url){ upd.img = url; upd.imgUpdatedAt = Date.now(); }
       }
       await update(ref(db,`inventory/${editItem.id}`), upd);
       em.cancel.click();
@@ -1255,6 +1286,7 @@
         reorder: Number(document.getElementById('newReorder').value||defaultReorder()),
         sold: 0,
         updatedAt: Date.now(),
+        imgUpdatedAt: imgUrl ? Date.now() : 0,
       };
       await set(ref(db,`inventory/${entry.id}`), entry);
       toast('Vare tilføjet');
