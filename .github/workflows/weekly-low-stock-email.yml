@@ -1,9 +1,9 @@
-name: Weekly low-stock PDF email
+name: Weekly low-stock email
 
 on:
   workflow_dispatch:
+
   schedule:
-    # Every Sunday at 07:00 in Denmark, including daylight saving time.
     - cron: '0 7 * * 0'
       timezone: Europe/Copenhagen
 
@@ -18,14 +18,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
+          node-version: '24'
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm install --omit=dev
 
-      - name: Send weekly low-stock PDF email
-        run: npm run send-low-stock-email
+      - name: Send weekly low-stock email
+        run: node scripts/send-low-stock-email.mjs
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
@@ -36,4 +36,3 @@ jobs:
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_CC: ${{ secrets.EMAIL_CC }}
-          DEFAULT_REORDER: ${{ secrets.DEFAULT_REORDER }}
