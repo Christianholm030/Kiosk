@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sortimentliste v14</title>
+<title>Sortimentliste v15</title>
 <style>
 :root{
   --bg:#08101f;
@@ -164,10 +164,10 @@ summary{cursor:pointer;font-weight:900}
 @media(max-width:760px){.order-toolbar{grid-template-columns:1fr}.order-row{grid-template-columns:44px 1fr}.order-actions{grid-column:1/-1;justify-content:flex-end}.order-number{width:44px}.order-position{width:68px}}
 .modal{position:fixed;inset:0;background:#0008;display:none;place-items:center;z-index:50;padding:14px}
 .modal.open{display:grid}
-.dialog{width:min(760px,96vw);max-height:94vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow)}
+.dialog{width:min(760px,96vw);max-height:94vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow);position:relative;overscroll-behavior:contain}
 .dialog-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-.dialog-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px}
-.dialog-actions .right{display:flex;gap:10px;flex-wrap:wrap}
+.dialog-actions{position:sticky;bottom:-18px;z-index:3;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:18px -18px -18px;padding:14px 18px;background:color-mix(in srgb,var(--panel) 96%,transparent);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.dialog-actions .right{display:flex;gap:10px;flex-wrap:wrap}.dialog-actions button{touch-action:manipulation}.dialog-saving{opacity:.65;pointer-events:none}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:none;z-index:60;box-shadow:var(--shadow)}
 .toast.show{display:block}
 
@@ -200,7 +200,7 @@ summary{cursor:pointer;font-weight:900}
 <header>
   <div class="top">
     <span class="brand">Sortimentliste</span>
-    <span class="version">v14</span>
+    <span class="version">v15</span>
     <div class="spacer"></div>
     <input id="search" class="search" type="search" placeholder="Søg efter vare eller kategori…">
     <button id="theme" class="btn ghost">Lys/mørk</button>
@@ -338,7 +338,7 @@ summary{cursor:pointer;font-weight:900}
   <div class="dialog">
     <div class="dialog-head">
       <h2>Redigér vare</h2>
-      <button id="editCloseTop" class="btn ghost">Luk</button>
+      <button type="button" id="editCloseTop" class="btn ghost">Luk</button>
     </div>
     <div class="form-grid">
       <div class="field"><label for="editName">Varenavn</label><input id="editName"></div>
@@ -365,10 +365,10 @@ summary{cursor:pointer;font-weight:900}
       </div>
     </div>
     <div class="dialog-actions">
-      <button id="deleteItem" class="btn bad">Slet vare</button>
+      <button type="button" id="deleteItem" class="btn bad">Slet vare</button>
       <div class="right">
-        <button id="editCancel" class="btn ghost">Annullér</button>
-        <button id="editSave" class="btn primary">Gem ændringer</button>
+        <button type="button" id="editCancel" class="btn ghost">Annullér</button>
+        <button type="button" id="editSave" class="btn primary">Gem ændringer</button>
       </div>
     </div>
   </div>
@@ -807,10 +807,15 @@ function buyText() {
 
 async function upload(file, id) {
   if (!file) return null;
-  const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '');
+  const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '') || 'jpg';
   const path = storageRef(storage, `inventory/${id}-${Date.now()}.${ext}`);
-  await uploadBytes(path, file);
-  return getDownloadURL(path);
+  try {
+    await uploadBytes(path, file, { contentType: file.type || 'image/jpeg' });
+    return await getDownloadURL(path);
+  } catch (error) {
+    console.error('Billedupload fejlede:', error);
+    throw new Error(`Billedet kunne ikke uploades til Firebase Storage: ${error?.message || error}`);
+  }
 }
 
 function clearNewForm() {
@@ -876,27 +881,54 @@ function closeEdit() {
 
 async function saveEdit() {
   if (!editId) return;
-  const old = items[editId];
-  const patch = {
-    name: $('editName').value.trim(),
-    cat: $('editCat').value || 'Andet',
-    stock: num($('editStock').value),
-    unit: $('editUnit').value.trim() || 'stk',
-    step: num($('editStep').value) || 0.25,
-    reorder: num($('editReorder').value),
-    discontinued: $('editDiscontinued').checked,
-    updatedAt: Date.now()
-  };
-  const file = $('editImage').files?.[0];
-  if (file) patch.img = await upload(file, editId);
-  items[editId] = { ...old, ...patch };
-  await update(ref(db, `inventory/${editId}`), patch);
-  closeEdit();
-  renderHome();
-  if (view === 'all') renderAll();
-  if (view === 'buy') renderBuy();
-  if (view === 'count') prepareCount(false);
-  toast('Ændringer gemt');
+
+  const saveButton = $('editSave');
+  const dialog = $('editModal').querySelector('.dialog');
+  const originalText = saveButton.textContent;
+
+  try {
+    saveButton.disabled = true;
+    saveButton.textContent = 'Gemmer…';
+    dialog.classList.add('dialog-saving');
+
+    const old = items[editId];
+    const name = $('editName').value.trim();
+    if (!name) throw new Error('Varen skal have et navn.');
+
+    const patch = {
+      name,
+      cat: $('editCat').value || 'Andet',
+      stock: num($('editStock').value),
+      unit: $('editUnit').value.trim() || 'stk',
+      step: num($('editStep').value) || 0.25,
+      reorder: num($('editReorder').value),
+      discontinued: $('editDiscontinued').checked,
+      updatedAt: Date.now()
+    };
+
+    const file = $('editImage').files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) throw new Error('Den valgte fil er ikke et billede.');
+      if (file.size > 10 * 1024 * 1024) throw new Error('Billedet må højst fylde 10 MB.');
+      patch.img = await upload(file, editId);
+    }
+
+    await update(ref(db, `inventory/${editId}`), patch);
+    items[editId] = { ...old, ...patch };
+    closeEdit();
+    renderHome();
+    if (view === 'all') renderAll();
+    if (view === 'buy') renderBuy();
+    if (view === 'count') prepareCount(false);
+    toast(file ? 'Ændringer og billede gemt' : 'Ændringer gemt');
+  } catch (error) {
+    console.error('Kunne ikke gemme varen:', error);
+    alert(`Kunne ikke gemme ændringerne.\n\n${error?.message || error}`);
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalText;
+    dialog.classList.remove('dialog-saving');
+  }
 }
 
 async function deleteCurrentItem() {
