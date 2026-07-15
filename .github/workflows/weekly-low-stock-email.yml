@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
+    # Hver søndag kl. 07.00 dansk tid.
     - cron: '0 7 * * 0'
       timezone: Europe/Copenhagen
 
@@ -13,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           package-manager-cache: false
@@ -24,15 +25,18 @@ jobs:
       - name: Install dependencies
         run: npm install --omit=dev
 
-      - name: Send weekly low-stock email
-        run: node scripts/send-low-stock-email.mjs
+      - name: Send weekly low-stock PDF email
+        run: npm run send-low-stock-email
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
+          DEFAULT_REORDER: ${{ secrets.DEFAULT_REORDER }}
+
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
+
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_CC: ${{ secrets.EMAIL_CC }}
