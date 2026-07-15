@@ -1,1386 +1,1063 @@
 <!doctype html>
 <html lang="da" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sortiment liste</title>
-  <meta name="color-scheme" content="dark light" />
-  <style>
-    :root{
-      --bg: #080d16;
-      --bg-soft: #0d1421;
-      --panel: rgba(18, 26, 41, .92);
-      --panel-solid: #121a29;
-      --muted: #1a2435;
-      --muted-2:#101827;
-      --text: #edf3fb;
-      --sub: #a9b8ce;
-      --accent: #8fb3ff;
-      --accent-2:#b7ccff;
-      --danger: #ff6b6b;
-      --warn: #ffb020;
-      --ok: #29d47d;
-      --border: #2c3a52;
-      --shadow: 0 14px 36px rgba(0,0,0,.32);
-      --header-h: 0px;
-      --radius: 18px;
-      --tap: 44px;
-    }
-    [data-theme="light"]{
-      --bg: #f5f7fb;
-      --bg-soft: #eef3fb;
-      --panel: rgba(255,255,255,.94);
-      --panel-solid:#ffffff;
-      --muted:#eef3fb;
-      --muted-2:#f7f9fc;
-      --text:#111827;
-      --sub:#53647c;
-      --accent:#305dff;
-      --accent-2:#5f82ff;
-      --danger:#c92a2a;
-      --warn:#9a6b00;
-      --ok:#07884a;
-      --border:#d7e0ef;
-      --shadow: 0 12px 28px rgba(15,23,42,.08);
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sortimentliste v14</title>
+<style>
+:root{
+  --bg:#08101f;
+  --panel:#101b31;
+  --panel2:#182642;
+  --panel3:#0d1730;
+  --text:#f4f7fb;
+  --sub:#9fb0c8;
+  --line:#2b3d5e;
+  --accent:#89a7ff;
+  --ok:#39d291;
+  --warn:#ffc15a;
+  --bad:#ff7d7d;
+  --shadow:0 16px 40px rgba(0,0,0,.18);
+  --radius:20px;
+}
+[data-theme="light"]{
+  --bg:#f4f7fb;
+  --panel:#ffffff;
+  --panel2:#edf2fa;
+  --panel3:#f8fbff;
+  --text:#172033;
+  --sub:#61738f;
+  --line:#d7e1ee;
+  --accent:#4e73ff;
+  --ok:#0a9158;
+  --warn:#a96b00;
+  --bad:#ca3d3d;
+  --shadow:0 12px 28px rgba(19,31,53,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+img{max-width:100%}
+.hidden{display:none!important}
 
-    *{ box-sizing: border-box; }
-    html,body{ min-height:100%; }
-    body{
-      margin:0;
-      padding-top:var(--header-h);
-      background:
-        radial-gradient(900px 600px at 20% -10%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 70%),
-        linear-gradient(180deg, var(--bg-soft), var(--bg));
-      color:var(--text);
-      font: 15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial;
-      -webkit-font-smoothing: antialiased;
-    }
-    .hidden{ display:none !important; }
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 16px}
+.top{max-width:1260px;margin:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:900;letter-spacing:.01em}
+.version{font-size:11px;color:var(--sub);padding:2px 8px;border:1px solid var(--line);border-radius:999px}
+.spacer{flex:1}
+.search{flex:1;min-width:240px;max-width:430px}
 
-    /* ─── App shell / top controls ─── */
-    header{
-      position:fixed; inset:0 0 auto 0; z-index:1000;
-      display:grid; grid-template-columns:auto minmax(260px,1fr); gap:12px 18px; align-items:center;
-      background: color-mix(in oklab, var(--panel-solid) 88%, transparent);
-      backdrop-filter: blur(14px) saturate(140%);
-      border-bottom:1px solid var(--border);
-      padding: 12px 18px;
-      transform: translateY(0);
-      transition: transform .22s ease, box-shadow .22s ease;
-      box-shadow: 0 8px 24px rgba(0,0,0,.16);
-    }
-    header.hidden-on-scroll{ transform: translateY(-100%); }
-    h1{ margin:0; font-size:19px; letter-spacing:.2px; white-space:nowrap; }
-    h1::after{ content:"v11"; margin-left:8px; font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; vertical-align:middle; }
-    .toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .grow{ flex:1 1 420px; }
+input,select,textarea{width:100%;min-height:46px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:var(--text);padding:10px 12px;outline:none}
+input[type="checkbox"]{width:20px;height:20px;min-height:0;margin:0}
+.btn{min-height:44px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:var(--text);padding:9px 13px;font-weight:850;box-shadow:none}
+.btn:hover{filter:brightness(1.04)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#09101f}
+.btn.ghost{background:transparent}
+.btn.bad{color:var(--bad)}
+.btn.ok{color:var(--ok)}
+.btn.warn{color:var(--warn)}
 
-    .btn{
-      appearance:none;
-      min-height:var(--tap);
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, var(--muted), var(--muted-2));
-      color:var(--text);
-      padding:9px 13px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:700;
-      box-shadow: none;
-      white-space:nowrap;
-      transition: transform .08s ease, border-color .15s ease, background .15s ease;
-    }
-    .btn:hover{ border-color: color-mix(in oklab, var(--border), var(--accent) 55%); }
-    .btn:active{ transform: translateY(1px); }
-    .btn.primary{ background:linear-gradient(180deg, var(--accent-2), var(--accent)); border-color: transparent; color:#071021; }
-    .btn.ghost{ background:transparent; }
-    .btn.danger{ background:transparent; color:var(--danger); border-color: color-mix(in oklab, var(--danger), var(--border) 55%); }
-    .btn.ok{ background:transparent; color:var(--ok); border-color: color-mix(in oklab, var(--ok), var(--border) 55%); }
-    .btn.warn{ background:transparent; color:var(--warn); border-color: color-mix(in oklab, var(--warn), var(--border) 55%); }
+main{max-width:1260px;margin:auto;padding:16px}
+.nav{display:flex;gap:8px;overflow:auto;padding-bottom:4px}
+.nav button{white-space:nowrap}
+.nav .active{background:var(--accent);color:#09101f;border-color:transparent}
 
-    .field, .badge, .switch{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      min-height:var(--tap);
-      background:var(--muted);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:7px 11px;
-    }
-    .field input, .field select, .badge input, details input, details select, .dialog input, .dialog select, .email-controls input, .email-tools input{
-      background:transparent;
-      border:0;
-      color:var(--text);
-      outline:none;
-      font:inherit;
-      min-width:110px;
-    }
-    .field:focus-within, .email-controls:focus-within, .email-tools:focus-within{ border-color:var(--accent); }
-    .field input[type="search"]{ width:100%; min-width:170px; }
-    .switch{ border-radius:999px; color:var(--sub); }
-    .badge{ color:var(--sub); }
-    input[type="file"]{ max-width:180px; }
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.panel h2,.panel h3,.panel h4{margin:0 0 8px}
+.muted{color:var(--sub)}
+.hero{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin:16px 0}
+.progress{height:14px;background:var(--panel2);border-radius:999px;overflow:hidden;margin:12px 0}
+.progress>div{height:100%;width:0;background:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px}
+.kpi strong{display:block;font-size:26px}
+.list{display:flex;flex-direction:column;gap:10px}
+.list-row{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
 
-    main{ max-width:1180px; margin:0 auto; padding:18px; }
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.filters > *{width:auto;min-width:170px}
+.check-inline{display:flex;align-items:center;gap:8px;padding:0 6px}
 
-    .tabs{
-      display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 14px;
-    }
-    .tab{
-      min-height:38px;
-      padding:8px 13px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:color-mix(in oklab, var(--muted-2) 88%, transparent);
-      color:var(--sub);
-      font-weight:800;
-      cursor:pointer;
-    }
-    .tab.active{ background:var(--accent); color:#071021; border-color:transparent; }
+.section-label{margin:20px 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
 
-    .stats{
-      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin: 6px 0 14px;
-    }
-    .stat{
-      display:flex; gap:8px; align-items:center; justify-content:center;
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:11px 12px;
-    }
-    .stat strong{ font-size:20px; }
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+.item-card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:15px;display:grid;grid-template-columns:92px 1fr;gap:14px;box-shadow:var(--shadow)}
+.item-card.low{border-color:var(--warn)}
+.item-card.stale{box-shadow:inset 4px 0 0 var(--bad),var(--shadow)}
+.item-thumb{width:92px;height:92px;border-radius:18px;object-fit:cover;background:var(--panel2);border:1px solid var(--line)}
+.item-thumb.placeholder{display:grid;place-items:center;color:var(--sub);font-size:12px;text-align:center;padding:8px}
+.item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.item-name{font-size:22px;font-weight:900;line-height:1.15}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.badge{font-size:11px;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:3px 8px;white-space:nowrap}
+.badge.warn{color:var(--warn)}
+.badge.bad{color:var(--bad)}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.fact{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px}
+.fact-label{font-size:12px;color:var(--sub);margin-bottom:3px}
+.fact-value{font-size:18px;font-weight:900}
+.stock-actions{display:flex;align-items:center;gap:8px;margin-top:12px}
+.qty-btn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:24px;font-weight:900}
+.qty-val{min-width:110px;text-align:center;font-size:19px;font-weight:900}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.card-note{margin-top:8px;font-size:13px}
+.low-text{color:var(--warn)}
+.stale-text{color:var(--bad)}
 
-    .grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:13px; }
-    .card{
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      box-shadow:var(--shadow);
-      position:relative;
-    }
-    .card.low{ border-color:color-mix(in oklab, var(--warn) 70%, var(--border)); }
-    .card.discontinued{ opacity:.58; filter:saturate(.55); border-style:dashed; }
-    .card.discontinued .thumb{ opacity:.72; }
-    .card.low::before{
-      content:"Lavt lager";
-      position:absolute; top:8px; left:8px; z-index:2;
-      padding:4px 8px; border-radius:999px;
-      background:color-mix(in oklab, var(--warn) 25%, var(--panel-solid));
-      border:1px solid color-mix(in oklab, var(--warn) 70%, var(--border));
-      color:var(--text); font-size:11px; font-weight:800;
-    }
-    .thumb{ aspect-ratio:16/10; width:100%; background:var(--muted-2); display:block; object-fit:cover; }
-    .meta{ padding:12px; display:flex; flex-direction:column; gap:9px; min-width:0; }
-    .name{ font-weight:900; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap; }
-    .name > div{ overflow-wrap:anywhere; }
-    .cat{ display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--sub); border:1px solid var(--border); border-radius:999px; padding:3px 8px; }
-    .row{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-    .row-actions{ align-items:flex-start; }
-    .row-actions .pill{ flex:1 1 auto; min-width:160px; }
-    .row-actions .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
-    .pill{ font-size:12px; padding:6px 9px; border-radius:999px; background:var(--muted-2); border:1px solid var(--border); color:var(--text); white-space:nowrap; }
-    .qty{ display:inline-flex; align-items:center; gap:6px; }
-    .qty button{ min-height:38px; padding:6px 12px; border-radius:12px; border:1px solid var(--border); background:var(--muted-2); color:var(--text); cursor:pointer; font-weight:900; }
-    .qty .val{ min-height:38px; display:inline-flex; align-items:center; padding:6px 9px; border-radius:12px; background:var(--muted-2); border:1px solid var(--border); cursor:pointer; }
-    .empty{ opacity:.76; border:1px dashed var(--border); padding:18px; border-radius:var(--radius); text-align:center; background:var(--panel); }
+.count-layout{max-width:980px;margin:16px auto 0}
+.count-header{margin-bottom:12px}
+.count-card{background:var(--panel);border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:var(--shadow)}
+.count-main{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:center}
+.count-img{width:200px;height:200px;border-radius:24px;object-fit:cover;background:var(--panel2);border:1px solid var(--line)}
+.count-img.placeholder{display:grid;place-items:center;color:var(--sub);text-align:center;padding:12px}
+.count-title{font-size:44px;font-weight:950;line-height:1.05;margin:0 0 8px}
+.count-sub{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.count-stock-boxes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.count-box{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:12px}
+.count-box .label{font-size:12px;color:var(--sub)}
+.count-box .value{font-size:24px;font-weight:900;margin-top:2px}
+.count-control{display:grid;grid-template-columns:88px 1fr 88px;gap:12px;align-items:center;margin:18px 0}
+.count-control button{height:86px;font-size:42px;border-radius:22px}
+.count-number{text-align:center;font-size:56px;font-weight:950;line-height:1.05}
+.count-number small{display:block;font-size:18px;color:var(--sub);font-weight:700;margin-top:6px}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.count-nav{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 
-    details{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; box-shadow:var(--shadow); }
-    summary{ cursor:pointer; font-weight:900; }
-    details[open] summary{ margin-bottom:10px; }
-    code{ color:var(--accent-2); }
+.buy-card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;box-shadow:var(--shadow)}
+.buy-card + .buy-card{margin-top:10px}
+.buy-main strong{display:block;font-size:28px;line-height:1.1}
+.buy-main .meta{color:var(--sub);margin-top:4px}
+.buy-meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.buy-pill{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px}
+.buy-pill .label{font-size:12px;color:var(--sub)}
+.buy-pill .value{font-size:18px;font-weight:900;margin-top:2px}
+.buy-qty{font-size:34px;font-weight:950;color:var(--warn);white-space:nowrap}
 
-    .list{ display:flex; flex-direction:column; gap:8px; }
-    .list-item{ display:flex; justify-content:space-between; gap:12px; align-items:center; background:var(--muted-2); border:1px solid var(--border); border-radius:14px; padding:10px 11px; flex-wrap:wrap; }
-    .list-item input, .list-item select{ min-height:38px; border:1px solid var(--border); border-radius:12px; padding:6px 9px; color:var(--text); background:var(--panel-solid); }
-
-    .email-controls, .email-tools{
-      margin-top:10px;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      gap:8px;
-      flex-wrap:wrap;
-      padding-top:10px;
-      border-top:1px solid var(--border);
-    }
-    .email-controls input, .email-tools input{
-      min-height:var(--tap);
-      min-width:260px;
-      background:var(--muted-2);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:9px 12px;
-    }
-
-    /* Modal */
-    .modal{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:2000; padding:14px; }
-    .modal.open{ display:grid; }
-    .dialog{ width:min(560px, 94vw); background:var(--panel-solid); border:1px solid var(--border); border-radius:20px; padding:16px; box-shadow: var(--shadow); }
-    .dialog h2{ margin:0 0 10px; font-size:19px; }
-    .dialog .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:11px; }
-    .dialog label{ color:var(--sub); font-weight:700; }
-    .dialog input, .dialog select{ margin-top:4px; min-height:40px; border:1px solid var(--border); border-radius:12px; padding:8px 10px; background:var(--muted-2); }
-    .dialog .actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
-
-    /* Toast */
-    .toast{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:var(--panel-solid); border:1px solid var(--border); padding:11px 14px; border-radius:14px; box-shadow:var(--shadow); display:none; z-index:3000; }
-    .toast.show{ display:block; }
-
-    @media (max-width: 760px){
-      :root{ --tap:42px; }
-      body{ font-size:14px; }
-      header{
-        display:block;
-        padding:10px;
-        max-height:58vh;
-        overflow:auto;
-      }
-      h1{ font-size:18px; margin-bottom:8px; }
-      .toolbar{ gap:7px; margin-top:7px; }
-      .toolbar.grow{ display:grid; grid-template-columns:1fr; }
-      .field{ width:100%; }
-      .field input, .field select{ min-width:0; width:100%; }
-      .switch, .badge{ flex:1 1 auto; justify-content:center; }
-      .toolbar > .btn, .toolbar details{ flex:1 1 auto; }
-      input[type="file"]{ max-width:140px; }
-      main{ padding:12px; }
-      .tabs{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin:0 -12px 12px; padding-left:12px; scrollbar-width:none; }
-      .tabs::-webkit-scrollbar{ display:none; }
-      .tab{ flex:0 0 auto; min-height:36px; padding:7px 12px; }
-      .stats{ gap:8px; }
-      .stat{ flex-direction:column; gap:1px; padding:9px 5px; font-size:12px; }
-      .stat strong{ font-size:18px; }
-      .grid{ grid-template-columns:1fr; gap:10px; }
-      .card{ display:grid; grid-template-columns:86px 1fr; min-height:128px; }
-      .card.low::before{ top:6px; left:6px; font-size:10px; padding:3px 6px; }
-      .thumb{ width:86px; height:100%; min-height:128px; aspect-ratio:auto; }
-      .meta{ padding:10px; gap:7px; overflow:hidden; }
-      .name{ font-size:15px; gap:5px; }
-      .cat{ font-size:11px; padding:2px 6px; }
-      .row{ align-items:stretch; }
-      .qty{ width:100%; display:grid; grid-template-columns:40px 1fr 40px; gap:5px; }
-      .qty button, .qty .val{ min-height:38px; justify-content:center; }
-      .pill{ white-space:normal; width:100%; }
-      .row-actions .actions{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-left:0; }
-      .row-actions .actions .btn{ width:100%; min-height:38px; padding:7px 8px; }
-      details{ padding:10px; }
-      .list-item{ align-items:stretch; }
-      .list-item > div{ width:100%; }
-      .list-item input, .list-item select{ width:100% !important; }
-      .email-controls, .email-tools{ flex-direction:column; align-items:stretch; }
-      .email-controls input, .email-controls .btn, .email-tools input, .email-tools .btn{ width:100%; min-width:0; }
-      .modal{ place-items:end center; padding:0; }
-      .dialog{ width:100%; max-height:92vh; overflow:auto; border-radius:20px 20px 0 0; padding:16px; }
-      .dialog .grid2{ grid-template-columns:1fr; }
-      .dialog .actions{ display:grid; grid-template-columns:1fr 1fr; }
-      .dialog .actions .btn{ width:100%; }
-    }
-
-    @media (max-width: 420px){
-      .card{ grid-template-columns:76px 1fr; }
-      .thumb{ width:76px; min-height:126px; }
-      .row-actions .actions{ grid-template-columns:1fr; }
-    }
+.details-card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:14px;box-shadow:var(--shadow)}
+details.details-card + details.details-card{margin-top:12px}
+summary{cursor:pointer;font-weight:900}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--sub);font-weight:700}
+.field.full{grid-column:1/-1}
+.inline-check{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:14px}
+.file-wrap{display:flex;flex-direction:column;gap:10px}
+.preview{width:120px;height:120px;border-radius:18px;border:1px solid var(--line);background:var(--panel2);object-fit:cover}
+.preview.placeholder{display:grid;place-items:center;color:var(--sub);padding:10px;text-align:center}
 
 
-    /* ─── v5 streamlined layout ─── */
-    h1::after{ content:none !important; }
-    .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
-    .version-pill{ font-size:11px; color:var(--sub); border:1px solid var(--border); padding:2px 7px; border-radius:999px; }
-    header{ grid-template-columns:auto minmax(0,1fr); gap:12px; padding:10px 14px; }
-    .top-controls{ justify-content:flex-end; flex-wrap:nowrap; min-width:0; }
-    .top-search{ flex:1 1 360px; max-width:460px; }
-    .sort-field{ flex:0 0 auto; }
-    .compact-switch{ flex:0 0 auto; }
-    .tools-panel{ margin:0 0 14px; }
-    .admin-tools{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
-    .email-tools{
-      margin-top:10px;
-      justify-content:flex-start;
-      border-top:1px solid var(--border);
-      padding-top:10px;
-    }
-    .file-action{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
-    }
-    .file-action input{
-      position:absolute;
-      width:1px; height:1px;
-      opacity:0;
-      pointer-events:none;
-    }
+.admin-tabs{display:flex;gap:8px;overflow:auto;margin:14px 0}
+.admin-tabs .active{background:var(--accent);color:#09101f;border-color:transparent}
+.admin-pane{display:none}
+.admin-pane.active{display:block}
+.order-toolbar{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;margin:12px 0}
+.order-list{display:flex;flex-direction:column;gap:8px}
+.order-row{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center}
+.order-number{width:52px;height:44px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:13px;font-weight:900}
+.order-name{font-weight:900;font-size:17px}
+.order-meta{font-size:12px;color:var(--sub);margin-top:2px}
+.order-actions{display:flex;gap:6px;align-items:center}
+.order-position{width:74px;min-height:40px;text-align:center}
+.order-actions .btn{min-width:42px;min-height:40px;padding:6px 9px}
+@media(max-width:760px){.order-toolbar{grid-template-columns:1fr}.order-row{grid-template-columns:44px 1fr}.order-actions{grid-column:1/-1;justify-content:flex-end}.order-number{width:44px}.order-position{width:68px}}
+.modal{position:fixed;inset:0;background:#0008;display:none;place-items:center;z-index:50;padding:14px}
+.modal.open{display:grid}
+.dialog{width:min(760px,96vw);max-height:94vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow)}
+.dialog-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.dialog-actions{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px}
+.dialog-actions .right{display:flex;gap:10px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;display:none;z-index:60;box-shadow:var(--shadow)}
+.toast.show{display:block}
 
-    .nested-tool{ margin-top:10px; box-shadow:none; }
-    .add-form{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:8px; align-items:center; }
-    .add-form input, .add-form select{ min-height:var(--tap); border:1px solid var(--border); border-radius:14px; padding:8px 10px; color:var(--text); background:var(--muted-2); }
-    .file-badge{ justify-content:space-between; overflow:hidden; }
-    .file-badge input{ max-width:130px; }
-    .grid{ grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:10px; }
-    .card{ display:grid; grid-template-columns:86px minmax(0,1fr); min-height:112px; overflow:visible; }
-    .thumb{ width:66px; height:66px; min-height:0; aspect-ratio:1; border-radius:999px; margin:14px 0 14px 14px; border:1px solid var(--border); background:var(--muted-2); align-self:start; }
-    .meta{ padding:10px 12px; }
-    .name{ font-size:15px; }
-    .row-actions .actions{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; width:100%; margin-left:0; }
-    .row-actions .actions .btn{ min-height:36px; padding:6px 8px; }
-    .card.low::before{ top:-7px; left:14px; }
-
-    @media (max-width: 760px){
-      body{ padding-top:var(--header-h); }
-      header{ display:block; padding:9px 10px; max-height:none; overflow:visible; }
-      .brand{ justify-content:space-between; margin-bottom:8px; }
-      h1{ margin:0; font-size:19px; }
-      .top-controls{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-      .top-search{ grid-column:1/-1; max-width:none; }
-      .sort-field{ grid-column:1/-1; }
-      .compact-switch{ justify-content:center; }
-      .tools-panel details{ box-shadow:none; }
-      .admin-tools{ display:grid; grid-template-columns:1fr 1fr; }
-      .admin-tools .badge, .admin-tools .btn{ width:100%; justify-content:center; }
-      .add-form{ grid-template-columns:1fr; }
-      .grid{ grid-template-columns:1fr; }
-      .card{ grid-template-columns:70px minmax(0,1fr); min-height:auto; }
-      .thumb{ width:52px; height:52px; margin:12px 0 12px 10px; }
-      .row-actions .actions{ grid-template-columns:1fr 1fr; }
-      .field input[type="search"]{ min-width:0; }
-    }
-
-    @media (max-width: 420px){
-      .admin-tools{ grid-template-columns:1fr; }
-      .row-actions .actions{ grid-template-columns:1fr 1fr; }
-      .card{ grid-template-columns:64px minmax(0,1fr); }
-      .thumb{ width:48px; height:48px; }
-    }
-
+@media(max-width:960px){
+  .hero{grid-template-columns:1fr}
+  .count-main{grid-template-columns:1fr}
+  .count-img,.count-img.placeholder{margin:auto}
+  .count-title{text-align:center;font-size:34px}
+  .count-sub{justify-content:center}
+}
+@media(max-width:760px){
+  header{padding:10px}
+  .top{gap:8px}
+  .brand{width:100%}
+  .search{max-width:none;min-width:100%}
+  .kpis{grid-template-columns:1fr 1fr}
+  .card-grid{grid-template-columns:1fr}
+  .item-card{grid-template-columns:1fr}
+  .item-thumb,.item-thumb.placeholder{width:100%;height:180px}
+  .facts,.buy-meta-grid,.count-stock-boxes,.form-grid,.quick,.count-nav{grid-template-columns:1fr}
+  .count-control{grid-template-columns:72px 1fr 72px}
+  .count-control button{height:72px;font-size:36px}
+  .count-number{font-size:44px}
+  .buy-card,.list-row{grid-template-columns:1fr}
+  .buy-qty{font-size:28px}
+}
 </style>
 </head>
 <body>
-  <!-- ───────────────── Header / Controls ───────────────── -->
-  <header>
-    <div class="brand">
-      <h1>Sortiment liste</h1>
-      <span class="version-pill">v11</span>
-    </div>
-    <div class="toolbar grow top-controls">
-      <div class="field top-search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2a8 8 0 105.293 14.293l4.207 4.207 1.414-1.414-4.207-4.207A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
-        <input id="q" type="search" placeholder="Søg vare…" />
+<header>
+  <div class="top">
+    <span class="brand">Sortimentliste</span>
+    <span class="version">v14</span>
+    <div class="spacer"></div>
+    <input id="search" class="search" type="search" placeholder="Søg efter vare eller kategori…">
+    <button id="theme" class="btn ghost">Lys/mørk</button>
+  </div>
+</header>
+
+<main>
+  <nav class="nav">
+    <button class="btn active" data-view="home">Oversigt</button>
+    <button class="btn" data-view="count">Optæl</button>
+    <button class="btn" data-view="buy">Indkøb</button>
+    <button class="btn" data-view="all">Alle varer</button>
+    <button class="btn" data-view="admin">Administration</button>
+  </nav>
+
+  <section id="view-home">
+    <div class="hero">
+      <div class="panel">
+        <h2>Ugens optælling</h2>
+        <div id="progressText" class="muted">0 af 0 varer opdateret</div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <p class="muted">Varerne bliver vist i en naturlig optællingsrækkefølge: drikkevarer først, postmix til sidst i drikkevarer, derefter slik, chokolade, chips/snacks, phantom/udstyr, rengøring og service.</p>
+        <button class="btn primary" data-go="count">Fortsæt optælling</button>
       </div>
-      <div class="field sort-field">
-        <label for="sort">Sortér</label>
-        <select id="sort">
-          <option value="name">Navn</option>
-          <option value="stockAsc">Lager lav→høj</option>
-          <option value="stockDesc">Lager høj→lav</option>
-          <option value="soldDesc">Solgt mest</option>
-          <option value="updatedDesc">Senest opdateret</option>
-        </select>
+      <div class="kpis">
+        <div class="kpi"><strong id="kpiLow">0</strong><span>skal købes</span></div>
+        <div class="kpi"><strong id="kpiStale">0</strong><span>ikke opdateret i 30 dage</span></div>
+        <div class="kpi"><strong id="kpiTotal">0</strong><span>aktive varer</span></div>
       </div>
-      <label class="switch compact-switch"><input id="onlyLow" type="checkbox"/> Lavt lager</label>
-      <label class="switch compact-switch"><input id="showDiscontinued" type="checkbox"/> Vis udgåede</label>
-      <label class="switch compact-switch"><input id="themeToggle" type="checkbox"/> Lys</label>
     </div>
-  </header>
+    <div class="panel">
+      <h2>Kræver handling</h2>
+      <div id="homeActions" class="list"></div>
+    </div>
+  </section>
 
-  <!-- ───────────────── Main ───────────────── -->
-  <main>
-    <div class="tabs" id="tabs"></div>
+  <section id="view-count" class="hidden">
+    <div class="count-layout">
+      <div class="panel count-header">
+        <div id="countProgress" class="muted"></div>
+        <div class="progress"><div id="countProgressBar"></div></div>
+        <div class="filters">
+          <select id="countFilter"></select>
+        </div>
+      </div>
+      <div id="countCard" class="count-card"></div>
+    </div>
+  </section>
 
-    <div class="stats">
-      <div class="stat"><strong id="statCount">0</strong> varer</div>
-      <div class="stat"><strong id="statLow">0</strong> lavt lager</div>
-      <div class="stat"><strong id="statDiscontinued">0</strong> udgåede</div>
-      <div class="stat"><strong id="statSold">0</strong> solgt (periode)</div>
+  <section id="view-buy" class="hidden">
+    <div class="panel">
+      <h2>Indkøbsliste</h2>
+      <p class="muted">Kun aktive varer under minimum vises. Listen følger samme naturlige rækkefølge som optællingen.</p>
+      <div class="card-actions">
+        <button id="copyBuy" class="btn primary">Kopiér indkøbsliste</button>
+        <button id="mailBuy" class="btn">Åbn som mail</button>
+      </div>
+    </div>
+    <div id="buyList"></div>
+  </section>
+
+  <section id="view-all" class="hidden">
+    <div class="filters">
+      <select id="sort">
+        <option value="natural">Naturlig rækkefølge</option>
+        <option value="name">Navn</option>
+        <option value="stock">Laveste lager</option>
+        <option value="updated">Senest opdateret</option>
+      </select>
+      <label class="check-inline"><input id="onlyLow" type="checkbox"> <span>Kun varer der skal købes</span></label>
+      <label class="check-inline"><input id="showDiscontinued" type="checkbox"> <span>Vis udgåede</span></label>
+    </div>
+    <div id="allList"></div>
+  </section>
+
+  <section id="view-admin" class="hidden">
+    <div class="admin-tabs">
+      <button class="btn active" data-admin-tab="add">Tilføj vare</button>
+      <button class="btn" data-admin-tab="order">Optællingsrækkefølge</button>
+      <button class="btn" data-admin-tab="data">Data</button>
     </div>
 
-    <section class="tools-panel">
-      <details>
-        <summary>Værktøjer: import, eksport og ny vare</summary>
-        <div class="admin-tools">
-          <label class="badge">
-            <span>Upload CSV</span>
-            <input id="csvInput" type="file" accept=".csv,text/csv">
-          </label>
-          <label class="badge"><input id="cbDeduct" type="checkbox" checked><span>Fratræk salg</span></label>
-          <label class="badge"><span>Importér JSON</span><input id="jsonInput" type="file" accept="application/json"></label>
-          <button class="btn" id="exportJSON">Eksportér JSON</button>
-          <button class="btn ghost" id="downloadTemplate">CSV-skabelon</button>
-          <button class="btn" id="exportPurchases">Eksportér indkøb</button>
-          <button class="btn danger" id="resetSales">Nulstil solgt</button>
-        </div>
-        <div class="email-tools">
-          <input id="emailRecipient" type="email" placeholder="Modtager-email til indkøbsliste" />
-          <button class="btn primary" id="emailLowStock">Åbn mail med liste</button>
-          <button class="btn" id="openEmailClient">Åbn som mail</button>
-          <button class="btn" id="copyLowStock">Kopiér liste</button>
-        </div>
-        <details class="nested-tool">
-          <summary>Tilføj ny vare</summary>
-          <div class="add-form">
-            <input id="newName" type="text" placeholder="Varenavn" />
-            <select id="newCat"></select>
-            <label class="badge file-badge"><span>Tag billede</span><input id="newImgFile" type="file" accept="image/*" capture="environment" /></label>
-            <input id="newStock" type="number" step="0.25" min="0" placeholder="Startlager" />
-            <input id="newUnit" type="text" placeholder="Enhed" />
-            <input id="newStep" type="number" step="0.25" min="0.25" placeholder="Trin" />
-            <input id="newReorder" type="number" step="0.25" min="0" placeholder="Lav-lager grænse" />
-            <button class="btn primary" id="addItem">Tilføj vare</button>
+    <div id="admin-add" class="admin-pane active">
+      <div class="details-card">
+        <h2>Tilføj ny vare</h2>
+        <div class="form-grid">
+          <div class="field"><label for="newName">Varenavn</label><input id="newName" placeholder="Fx Coca-Cola 0,5 l"></div>
+          <div class="field"><label for="newCat">Kategori (bevares som nu)</label><select id="newCat"></select></div>
+          <div class="field"><label for="newStock">Nuværende lager</label><input id="newStock" type="number" step="0.25" min="0" placeholder="Fx 2"></div>
+          <div class="field"><label for="newUnit">Enhed</label><input id="newUnit" placeholder="Fx kasser, stk, dunk"></div>
+          <div class="field"><label for="newStep">Trin ved +/-</label><input id="newStep" type="number" step="0.25" min="0.01" placeholder="Fx 0,25 eller 1"></div>
+          <div class="field"><label for="newReorder">Minimum før køb</label><input id="newReorder" type="number" step="0.25" min="0" placeholder="Fx 3"></div>
+          <div class="field full">
+            <label>Placering i ruten</label>
+            <div class="muted">Nye varer placeres automatisk et naturligt sted, indtil rækkefølgen gemmes manuelt under “Optællingsrækkefølge”.</div>
           </div>
-        </details>
-      </details>
-    </section>
-
-    <div class="grid" id="cards"></div>
-
-    <section id="shoppingSection" style="margin-top:20px">
-      <details>
-        <summary>🧾 Indkøbsliste (varer under grænsen) & bulk-indkøb</summary>
-        <div class="list" id="shoppingList"></div>
-        <div class="email-controls">
-          <button class="btn ok" id="purchaseSelected">Markér som købt</button>
+          <div class="field full file-wrap">
+            <label for="newImage">Billede</label>
+            <div id="newImagePreview" class="preview placeholder">Intet billede valgt</div>
+            <input id="newImage" type="file" accept="image/*" capture="environment">
+          </div>
+          <button id="addItem" class="btn primary">Tilføj vare</button>
         </div>
-      </details>
-    </section>
-
-    <section id="unmatchedSection" class="hidden" style="margin-top:22px">
-      <h3>Ikke matchede varer fra CSV</h3>
-      <div class="list" id="unmatchedList"></div>
-      <p class="badge">Tip: Klik “Tilføj” for at oprette varen og upload derefter CSV igen.</p>
-    </section>
-
-    <section style="margin-top:22px">
-      <details>
-        <summary>CSV-format</summary>
-        <div class="badge">Forventet header (semikolon): <code>Dato;Varenr;Varenavn;Kategori;AntalSolgt;NettoOms;Moms;BruttoOms</code></div>
-      </details>
-      <details style="margin-top:8px">
-        <summary>Indkøbslog</summary>
-        <div id="purchaseLog" class="list"></div>
-      </details>
-    </section>
-  </main>
-
-  <!-- ───────────────── Purchase Modal ───────────────── -->
-  <div class="modal" id="purchaseModal" aria-hidden="true">
-    <div class="dialog">
-      <h2 id="pmTitle">Markér indkøb</h2>
-      <div class="grid2">
-        <label>Mængde
-          <input id="pmQty" type="number" step="0.25" min="0" style="width:100%"/>
-        </label>
-        <label>Pris (valgfri)
-          <input id="pmPrice" type="number" step="0.01" min="0" style="width:100%"/>
-        </label>
-        <label>Notat
-          <input id="pmNote" type="text" placeholder="fx leverandør / faktura" style="width:100%"/>
-        </label>
-        <label>Ny lav-lager grænse
-          <input id="pmReorder" type="number" step="0.25" min="0" style="width:100%"/>
-        </label>
       </div>
-      <div class="actions">
-        <button class="btn ghost" id="pmCancel">Annullér</button>
-        <button class="btn primary" id="pmSave">Gem</button>
+    </div>
+
+    <div id="admin-order" class="admin-pane">
+      <div class="details-card">
+        <h2>Optællingsrækkefølge</h2>
+        <p class="muted">Denne liste bestemmer præcis, hvilken rækkefølge varerne kommer i under <strong>Optæl</strong>. Brug pilene eller skriv en ny placering. Ændringerne træder først i kraft, når du trykker “Gem rækkefølge”.</p>
+        <div class="order-toolbar">
+          <input id="orderSearch" type="search" placeholder="Find en vare i rækkefølgen…">
+          <button id="resetOrder" class="btn ghost">Nulstil til automatisk</button>
+          <button id="saveOrder" class="btn primary">Gem rækkefølge</button>
+        </div>
+        <div id="orderStatus" class="muted"></div>
+        <div id="orderList" class="order-list"></div>
+      </div>
+    </div>
+
+    <div id="admin-data" class="admin-pane">
+      <div class="details-card">
+        <h2>Data</h2>
+        <div class="card-actions" style="margin-top:12px">
+          <button id="exportJson" class="btn">Eksportér JSON</button>
+          <label class="btn">Importér JSON<input id="importJson" type="file" accept="application/json" hidden></label>
+        </div>
+        <p class="muted" style="margin-top:10px">Kategorierne bliver ikke ændret. Den manuelle optællingsrækkefølge gemmes på hver vare som feltet <code>countOrder</code>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="editModal" class="modal">
+  <div class="dialog">
+    <div class="dialog-head">
+      <h2>Redigér vare</h2>
+      <button id="editCloseTop" class="btn ghost">Luk</button>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label for="editName">Varenavn</label><input id="editName"></div>
+      <div class="field"><label for="editCat">Kategori</label><select id="editCat"></select></div>
+      <div class="field"><label for="editStock">Nuværende lager</label><input id="editStock" type="number" step="0.25" min="0"></div>
+      <div class="field"><label for="editUnit">Enhed</label><input id="editUnit"></div>
+      <div class="field"><label for="editStep">Trin ved +/-</label><input id="editStep" type="number" step="0.25" min="0.01"></div>
+      <div class="field"><label for="editReorder">Minimum før køb</label><input id="editReorder" type="number" step="0.25" min="0"></div>
+      <div class="field full">
+        <label>Aktuel ruteplacering</label>
+        <div id="editRouteHint" class="muted"></div>
+      </div>
+      <div class="field full inline-check">
+        <div>
+          <div style="font-weight:800">Udgået af sortiment</div>
+          <div class="muted">Varer markeret som udgået skjules i de almindelige lister.</div>
+        </div>
+        <input id="editDiscontinued" type="checkbox">
+      </div>
+      <div class="field full file-wrap">
+        <label for="editImage">Billede</label>
+        <div id="editImagePreview" class="preview placeholder">Intet billede</div>
+        <input id="editImage" type="file" accept="image/*" capture="environment">
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button id="deleteItem" class="btn bad">Slet vare</button>
+      <div class="right">
+        <button id="editCancel" class="btn ghost">Annullér</button>
+        <button id="editSave" class="btn primary">Gem ændringer</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ───────────────── Edit Item Modal ───────────────── -->
-  <div class="modal" id="editModal" aria-hidden="true">
-    <div class="dialog">
-      <h2 id="emTitle">Redigér vare</h2>
-      <div class="grid2">
-        <label>Varenavn
-          <input id="emName" type="text" style="width:100%"/>
-        </label>
-        <label>Kategori
-          <select id="emCat" style="width:100%"></select>
-        </label>
-        <label>Lager
-          <input id="emStock" type="number" step="0.25" min="0" style="width:100%"/>
-        </label>
-        <label>Enhed
-          <input id="emUnit" type="text" style="width:100%"/>
-        </label>
-        <label>Trin ved +/-
-          <input id="emStep" type="number" step="0.25" min="0.01" style="width:100%"/>
-        </label>
-        <label>Lav-lager grænse
-          <input id="emReorder" type="number" step="0.25" min="0" style="width:100%"/>
-        </label>
-        <label class="switch" style="grid-column:1/-1; justify-content:flex-start">
-          <input id="emDiscontinued" type="checkbox"/> Udgået af sortiment
-        </label>
-        <label style="grid-column:1/-1">Nyt billede (valgfrit)
-          <input id="emImgFile" type="file" accept="image/*" capture="environment" style="width:100%"/>
-        </label>
+<div id="toast" class="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+import { getDatabase, ref, onValue, push, update, set, remove } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js';
+
+// Indsæt den samme Firebase-konfiguration som i din nuværende index.html.
+const firebaseConfig = {
+  apiKey: 'INDSÆT_DIN_NUVÆRENDE_API_KEY',
+  authDomain: 'bordfodbolddtu.firebaseapp.com',
+  databaseURL: 'https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'bordfodbolddtu',
+  storageBucket: 'bordfodbolddtu.appspot.com',
+  messagingSenderId: '993863941891',
+  appId: '1:993863941891:web:24c5c2408d254ad6d0f336'
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
+
+const $ = id => document.getElementById(id);
+const WEEK = 7 * 864e5;
+const STALE = 30 * 864e5;
+const nf = new Intl.NumberFormat('da-DK', { maximumFractionDigits: 2 });
+
+const FLOW = [
+  { key: 'drinks', label: 'Sodavand & drikkevarer' },
+  { key: 'candy', label: 'Slik' },
+  { key: 'chocolate', label: 'Chokolade & lignende' },
+  { key: 'snacks', label: 'Chips & snacks' },
+  { key: 'phantom', label: 'Phantom / udstyr' },
+  { key: 'cleaning', label: 'Rengøring' },
+  { key: 'service', label: 'Service' },
+  { key: 'other', label: 'Øvrigt' }
+];
+
+let items = {};
+let view = 'home';
+let editId = null;
+let countItems = [];
+let countIndex = 0;
+let orderDraft = [];
+let orderDirty = false;
+
+const num = v => Number(v || 0);
+const fmt = v => nf.format(num(v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const dateText = v => v ? new Date(v).toLocaleDateString('da-DK') : 'aldrig';
+const low = x => num(x.stock) < num(x.reorder);
+const stale = x => !x.updatedAt || Date.now() - num(x.updatedAt) > STALE;
+const activeItems = () => Object.values(items).filter(x => !x.discontinued);
+const allItems = () => Object.values(items);
+const categories = () => [...new Set(allItems().map(x => (x.cat || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'da'));
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+function showView(next) {
+  view = next;
+  document.querySelectorAll('[data-view]').forEach(btn => btn.classList.toggle('active', btn.dataset.view === next));
+  document.querySelectorAll('main > section[id^="view-"]').forEach(sec => sec.classList.add('hidden'));
+  $(`view-${next}`).classList.remove('hidden');
+  if (next === 'count') prepareCount(false);
+  if (next === 'buy') renderBuy();
+  if (next === 'all') renderAll();
+}
+
+function sectionMeta(item) {
+  const hay = `${item.name || ''} ${item.cat || ''}`.toLowerCase();
+
+  if (/postmix/.test(hay)) return { key: 'drinks', label: 'Sodavand & drikkevarer', inner: 99 };
+  if (/(cola|pepsi|max|fanta|sprite|sodavand|drikke|drik|juice|saft|vand|iste|ice tea|energidrik|red bull|monster|kaffe|te|cocio|kakao|øl|beer|carlsberg|tuborg|vin|prosecco|schweppes|tonic|sportsdrik)/.test(hay)) {
+    return { key: 'drinks', label: 'Sodavand & drikkevarer', inner: 10 };
+  }
+  if (/(slik|vingummi|bolsje|lakrids|karamel|sour|gummy|skum|sukkertøj|slikpose)/.test(hay)) {
+    return { key: 'candy', label: 'Slik', inner: 10 };
+  }
+  if (/(chokolade|m&m|m and m|snickers|mars|twix|kit ?kat|toffifee|kinder|maltesers|smarties|ferrero|cookies ?n ?cream)/.test(hay)) {
+    return { key: 'chocolate', label: 'Chokolade & lignende', inner: 10 };
+  }
+  if (/(chips|pringles|ostepops|flæskesvær|flæskesv[æe]rd|popcorn|saltstænger|snack|nødder|peanuts|crackers)/.test(hay)) {
+    return { key: 'snacks', label: 'Chips & snacks', inner: 10 };
+  }
+  if (/(phantom|udstyr|låg|baeger|bæger|kopper til popcorn|popcornbæger|popcornb[æa]ger|krus til slush|sugerør|popcornspand)/.test(hay)) {
+    return { key: 'phantom', label: 'Phantom / udstyr', inner: 10 };
+  }
+  if (/(rengøring|vaskemiddel|afkalker|toiletrens|opvask|sæbe|saebe|spray|desinfektion|handsker|svamp|rengørings|papirhåndklæde)/.test(hay)) {
+    return { key: 'cleaning', label: 'Rengøring', inner: 10 };
+  }
+  if (/(service|serviet|bestik|gaffel|kniv|tallerken|bakke|skål|skaal|boks|emballage|take away|takeaway|pose|krus|kop)/.test(hay)) {
+    return { key: 'service', label: 'Service', inner: 10 };
+  }
+  return { key: 'other', label: 'Øvrigt', inner: 10 };
+}
+
+function naturalSort(a, b) {
+  const aCustom = Number.isFinite(Number(a.countOrder));
+  const bCustom = Number.isFinite(Number(b.countOrder));
+  if (aCustom && bCustom && Number(a.countOrder) !== Number(b.countOrder)) return Number(a.countOrder) - Number(b.countOrder);
+  if (aCustom !== bCustom) return aCustom ? -1 : 1;
+  const sa = sectionMeta(a);
+  const sb = sectionMeta(b);
+  const oa = FLOW.findIndex(x => x.key === sa.key);
+  const ob = FLOW.findIndex(x => x.key === sb.key);
+  if (oa !== ob) return oa - ob;
+  if (sa.inner !== sb.inner) return sa.inner - sb.inner;
+  const catCompare = (a.cat || '').localeCompare((b.cat || ''), 'da');
+  if (catCompare !== 0) return catCompare;
+  return (a.name || '').localeCompare((b.name || ''), 'da');
+}
+
+function setImagePreview(previewEl, src) {
+  if (!src) {
+    previewEl.className = 'preview placeholder';
+    previewEl.textContent = 'Intet billede';
+    previewEl.innerHTML = 'Intet billede';
+    return;
+  }
+  previewEl.className = 'preview';
+  previewEl.innerHTML = `<img class="preview" src="${esc(src)}" alt="Billede">`;
+}
+
+function showFilePreview(fileInput, previewEl) {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    previewEl.className = 'preview';
+    previewEl.innerHTML = `<img class="preview" src="${reader.result}" alt="Forhåndsvisning">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function fillCategorySelect(selectEl, includeBlank = false) {
+  const cats = categories();
+  selectEl.innerHTML = `${includeBlank ? '<option value="">Vælg kategori</option>' : ''}${cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}${cats.includes('Andet') ? '' : '<option value="Andet">Andet</option>'}`;
+}
+
+function fillCountFilter() {
+  const cats = categories();
+  const current = $('countFilter').value || 'route:all';
+  const options = [
+    '<option value="route:all">Hele naturlige rute</option>',
+    ...FLOW.filter(x => x.key !== 'other').map(x => `<option value="section:${x.key}">${x.label}</option>`),
+    '<option disabled>──────────</option>',
+    ...cats.map(c => `<option value="cat:${esc(c)}">Kategori: ${esc(c)}</option>`)
+  ].join('');
+  $('countFilter').innerHTML = options;
+  if ([...$('countFilter').options].some(o => o.value === current)) $('countFilter').value = current;
+}
+
+function routeHint(item) {
+  const sec = sectionMeta(item);
+  return `${sec.label}${sec.key === 'drinks' && /postmix/i.test(item.name || '') ? ' · Postmix placeres sidst i drikkevarer' : ''}`;
+}
+
+function renderHome() {
+  const arr = activeItems();
+  const weekCount = arr.filter(x => x.updatedAt && Date.now() - x.updatedAt <= WEEK).length;
+  const pct = arr.length ? Math.round((weekCount / arr.length) * 100) : 0;
+  $('progressText').textContent = `${weekCount} af ${arr.length} varer opdateret de sidste 7 dage`;
+  $('progressBar').style.width = `${pct}%`;
+  $('kpiLow').textContent = arr.filter(low).length;
+  $('kpiStale').textContent = arr.filter(stale).length;
+  $('kpiTotal').textContent = arr.length;
+
+  const actionRows = [];
+  const lowCount = arr.filter(low).length;
+  const staleCount = arr.filter(stale).length;
+
+  if (lowCount) {
+    actionRows.push(`<div class="list-row"><div><strong>${lowCount} varer skal købes</strong><div class="muted">Gå direkte til indkøbslisten med foreslået købsmængde.</div></div><button class="btn" data-action-go="buy">Åbn indkøb</button></div>`);
+  }
+  if (staleCount) {
+    actionRows.push(`<div class="list-row"><div><strong>${staleCount} varer mangler ny optælling</strong><div class="muted">Start optælling i den naturlige rækkefølge.</div></div><button class="btn" data-action-go="count">Start optælling</button></div>`);
+  }
+  if (!lowCount && !staleCount) {
+    actionRows.push('<div class="muted">Alt ser opdateret ud lige nu.</div>');
+  }
+
+  $('homeActions').innerHTML = actionRows.join('');
+  document.querySelectorAll('[data-action-go]').forEach(btn => btn.onclick = () => showView(btn.dataset.actionGo));
+}
+
+function filteredCountItems() {
+  const mode = $('countFilter').value || 'route:all';
+  let arr = activeItems().slice().sort(naturalSort);
+  if (mode.startsWith('section:')) {
+    const key = mode.split(':')[1];
+    arr = arr.filter(x => sectionMeta(x).key === key);
+  } else if (mode.startsWith('cat:')) {
+    const cat = mode.slice(4);
+    arr = arr.filter(x => (x.cat || '') === cat);
+  }
+  return arr;
+}
+
+function prepareCount(reset = true) {
+  const previousId = countItems[countIndex]?.id;
+  countItems = filteredCountItems();
+  if (reset) {
+    countIndex = 0;
+  } else if (previousId) {
+    const found = countItems.findIndex(x => x.id === previousId);
+    if (found >= 0) countIndex = found;
+    else countIndex = Math.min(countIndex, Math.max(countItems.length - 1, 0));
+  }
+  renderCount();
+}
+
+function renderCount() {
+  const total = countItems.length;
+  if (!total) {
+    $('countProgress').textContent = 'Ingen varer i det valgte udsnit';
+    $('countProgressBar').style.width = '0%';
+    $('countCard').innerHTML = '<div class="muted">Der er ingen varer at optælle her.</div>';
+    return;
+  }
+
+  countIndex = Math.max(0, Math.min(countIndex, total - 1));
+  const x = countItems[countIndex];
+  const sec = sectionMeta(x);
+  const pct = total ? Math.round((countIndex / total) * 100) : 0;
+  $('countProgress').textContent = `Vare ${countIndex + 1} af ${total} · ${sec.label}`;
+  $('countProgressBar').style.width = `${pct}%`;
+
+  const imageBlock = x.img
+    ? `<img class="count-img" src="${esc(x.img)}" alt="${esc(x.name)}">`
+    : `<div class="count-img placeholder">Intet billede<br>på varen endnu</div>`;
+
+  $('countCard').innerHTML = `
+    <div class="count-main">
+      <div>${imageBlock}</div>
+      <div>
+        <h2 class="count-title">${esc(x.name)}</h2>
+        <div class="count-sub">
+          <span class="badge">${esc(x.cat || 'Uden kategori')}</span>
+          <span class="badge">${esc(sec.label)}</span>
+          ${stale(x) ? '<span class="badge bad">Ikke opdateret i 30+ dage</span>' : ''}
+          ${low(x) ? '<span class="badge warn">Under minimum</span>' : ''}
+        </div>
+        <div class="count-stock-boxes">
+          <div class="count-box"><div class="label">Nuværende lager</div><div class="value">${fmt(x.stock)} ${esc(x.unit || 'stk')}</div></div>
+          <div class="count-box"><div class="label">Minimum før køb</div><div class="value">${fmt(x.reorder)} ${esc(x.unit || 'stk')}</div></div>
+          <div class="count-box"><div class="label">Senest opdateret</div><div class="value">${dateText(x.updatedAt)}</div></div>
+        </div>
+        <div class="count-control">
+          <button class="btn" id="countMinus">−</button>
+          <div class="count-number"><span id="countValue">${fmt(x.stock)}</span><small>${esc(x.unit || 'stk')}</small></div>
+          <button class="btn" id="countPlus">+</button>
+        </div>
+        <div class="quick">
+          <button class="btn" id="countZero">0 / Udsolgt</button>
+          <button class="btn" id="countSame">Samme antal</button>
+          <button class="btn bad" id="countSkip">Spring over</button>
+        </div>
+        <div class="count-nav">
+          <button class="btn ghost" id="countPrev">Forrige</button>
+          <button class="btn primary" id="countSave">Gem og næste</button>
+        </div>
       </div>
-      <div class="actions">
-        <button class="btn ghost" id="emCancel">Annullér</button>
-        <button class="btn primary" id="emSave">Gem ændringer</button>
+    </div>`;
+
+  let value = num(x.stock);
+  const step = num(x.step) || 0.25;
+  const draw = () => $('countValue').textContent = fmt(value);
+
+  $('countMinus').onclick = () => { value = Math.max(0, value - step); draw(); };
+  $('countPlus').onclick = () => { value += step; draw(); };
+  $('countZero').onclick = () => { value = 0; draw(); };
+  $('countSame').onclick = () => saveCount(x, num(x.stock), true);
+  $('countSave').onclick = () => saveCount(x, value, false);
+  $('countSkip').onclick = () => { countIndex = (countIndex + 1) % total; renderCount(); };
+  $('countPrev').onclick = () => { countIndex = (countIndex - 1 + total) % total; renderCount(); };
+}
+
+async function saveCount(item, value, sameOnly = false) {
+  items[item.id] = { ...item, stock: value, updatedAt: Date.now() };
+  await update(ref(db, `inventory/${item.id}`), { stock: value, updatedAt: Date.now() });
+  toast(sameOnly ? 'Antal bekræftet' : 'Lager gemt');
+  countIndex = Math.min(countIndex + 1, Math.max(countItems.length - 1, 0));
+  prepareCount(false);
+}
+
+function itemCardHtml(x) {
+  const sec = sectionMeta(x);
+  const noteParts = [];
+  if (low(x)) noteParts.push('<span class="low-text">Skal købes</span>');
+  if (stale(x)) noteParts.push('<span class="stale-text">Ikke opdateret i 30+ dage</span>');
+  if (x.discontinued) noteParts.push('<span class="stale-text">Udgået af sortiment</span>');
+
+  const thumb = x.img
+    ? `<img class="item-thumb" src="${esc(x.img)}" alt="${esc(x.name)}">`
+    : `<div class="item-thumb placeholder">Intet billede</div>`;
+
+  return `
+  <article class="item-card ${low(x) ? 'low' : ''} ${stale(x) ? 'stale' : ''}">
+    <div>${thumb}</div>
+    <div>
+      <div class="item-head">
+        <div>
+          <div class="item-name">${esc(x.name)}</div>
+          <div class="badges">
+            <span class="badge">${esc(x.cat || 'Uden kategori')}</span>
+            <span class="badge">${esc(sec.label)}</span>
+            ${x.discontinued ? '<span class="badge bad">Udgået</span>' : ''}
+          </div>
+        </div>
+      </div>
+      <div class="facts">
+        <div class="fact"><div class="fact-label">På lager</div><div class="fact-value">${fmt(x.stock)} ${esc(x.unit || 'stk')}</div></div>
+        <div class="fact"><div class="fact-label">Minimum</div><div class="fact-value">${fmt(x.reorder)} ${esc(x.unit || 'stk')}</div></div>
+        <div class="fact"><div class="fact-label">Trin ved +/-</div><div class="fact-value">${fmt(x.step || 0.25)} ${esc(x.unit || '')}</div></div>
+        <div class="fact"><div class="fact-label">Senest opdateret</div><div class="fact-value">${dateText(x.updatedAt)}</div></div>
+      </div>
+      <div class="stock-actions">
+        <button class="qty-btn" data-minus="${x.id}">−</button>
+        <div class="qty-val">${fmt(x.stock)} ${esc(x.unit || '')}</div>
+        <button class="qty-btn" data-plus="${x.id}">+</button>
+      </div>
+      <div class="card-note">${noteParts.join(' · ') || '<span class="muted">Status OK</span>'}</div>
+      <div class="card-actions">
+        <button class="btn" data-confirm="${x.id}">Bekræft antal</button>
+        <button class="btn ghost" data-edit="${x.id}">Redigér</button>
       </div>
     </div>
-  </div>
+  </article>`;
+}
 
-  <div class="toast" id="toast"></div>
+function renderAll() {
+  const q = $('search').value.trim().toLowerCase();
+  const onlyLow = $('onlyLow').checked;
+  const showDiscontinued = $('showDiscontinued').checked;
+  const sort = $('sort').value;
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, onValue, set, push, update, remove, get } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js';
+  let arr = allItems().filter(x => showDiscontinued || !x.discontinued);
+  arr = arr.filter(x => !q || `${x.name || ''} ${x.cat || ''} ${sectionMeta(x).label}`.toLowerCase().includes(q));
+  if (onlyLow) arr = arr.filter(low);
 
-    // ─── Firebase-konfiguration (RET bucket til dit projekt) ───
-    const cfg = {
-      apiKey: "...",
-      authDomain: "bordfodbolddtu.firebaseapp.com",
-      databaseURL: "https://bordfodbolddtu-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "bordfodbolddtu",
-      storageBucket: "bordfodbolddtu.appspot.com", // ← VIGTIGT: <projectId>.appspot.com
-      messagingSenderId: "993863941891",
-      appId: "1:993863941891:web:24c5c2408d254ad6d0f336"
-    };
+  if (sort === 'name') arr.sort((a, b) => (a.name || '').localeCompare((b.name || ''), 'da'));
+  else if (sort === 'stock') arr.sort((a, b) => num(a.stock) - num(b.stock));
+  else if (sort === 'updated') arr.sort((a, b) => num(b.updatedAt) - num(a.updatedAt));
+  else arr.sort(naturalSort);
 
-    // Den ugentlige automatiske søndagsmail kører via GitHub Actions.
-    // GitHub Secrets/API-nøgler må ikke ligge i denne offentlige HTML-fil.
-    // Derfor åbner knappen her kun en sikker manuel mailkladde.
-
-    const app = initializeApp(cfg);
-    const db  = getDatabase(app);
-    // Vær eksplicit med bucket (robust mod tastefejl)
-    const storage = getStorage(app, `gs://${cfg.storageBucket}`);
-
-    // ─── DOM ───
-    const hdr = document.querySelector('header');
-    const tabsEl = document.getElementById('tabs');
-    const cardsEl = document.getElementById('cards');
-    const qEl = document.getElementById('q');
-    const sortEl = document.getElementById('sort');
-    const onlyLowEl = document.getElementById('onlyLow');
-    const showDiscontinuedEl = document.getElementById('showDiscontinued');
-    const themeToggle = document.getElementById('themeToggle');
-
-    const csvInput = document.getElementById('csvInput');
-    const jsonInput = document.getElementById('jsonInput');
-    const exportJSONBtn = document.getElementById('exportJSON');
-    const exportPurchasesBtn = document.getElementById('exportPurchases');
-    const newImgFile = document.getElementById('newImgFile');
-    const resetSalesBtn = document.getElementById('resetSales');
-    const downloadTplBtn = document.getElementById('downloadTemplate');
-
-    const unmatchedSection = document.getElementById('unmatchedSection');
-    const unmatchedList = document.getElementById('unmatchedList');
-
-    const shoppingList = document.getElementById('shoppingList');
-    const purchaseSelectedBtn = document.getElementById('purchaseSelected');
-    const emailRecipientEl = document.getElementById('emailRecipient');
-    const emailLowStockBtn = document.getElementById('emailLowStock');
-    const openEmailClientBtn = document.getElementById('openEmailClient');
-    const copyLowStockBtn = document.getElementById('copyLowStock');
-
-    const purchaseLogEl = document.getElementById('purchaseLog');
-
-    const statCount = document.getElementById('statCount');
-    const statLow = document.getElementById('statLow');
-    const statDiscontinued = document.getElementById('statDiscontinued');
-    const statSold = document.getElementById('statSold');
-
-    const pm = {
-      root: document.getElementById('purchaseModal'),
-      title: document.getElementById('pmTitle'),
-      qty: document.getElementById('pmQty'),
-      price: document.getElementById('pmPrice'),
-      note: document.getElementById('pmNote'),
-      reorder: document.getElementById('pmReorder'),
-      cancel: document.getElementById('pmCancel'),
-      save: document.getElementById('pmSave'),
-    };
-
-    const em = {
-      root: document.getElementById('editModal'),
-      title: document.getElementById('emTitle'),
-      name: document.getElementById('emName'),
-      cat: document.getElementById('emCat'),
-      stock: document.getElementById('emStock'),
-      unit: document.getElementById('emUnit'),
-      step: document.getElementById('emStep'),
-      reorder: document.getElementById('emReorder'),
-      discontinued: document.getElementById('emDiscontinued'),
-      imgFile: document.getElementById('emImgFile'),
-      cancel: document.getElementById('emCancel'),
-      save: document.getElementById('emSave'),
-    };
-
-    const CATS = [
-      "Alle","Sodavand & Drikke","Slik","Chokolade & Barer","Chips & Snacks",
-      "Popcorn","Phantom (udstyr)","Mad & Kaffen","Service & Andet","Pladsen","Rengøring"
-    ];
-
-    // udfyld kategori dropdown til ny vare
-    const newCat = document.getElementById('newCat');
-    CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; newCat.appendChild(o); });
-    CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; em.cat.appendChild(o); });
-
-    // ─── State ───
-    let items = {};            // id -> item
-    let purchases = {};        // id -> purchase
-    let activeCat = localStorage.getItem('activeCat') || 'Alle';
-
-    // Preferences
-    onlyLowEl.checked = localStorage.getItem('onlyLow') === '1';
-    showDiscontinuedEl.checked = localStorage.getItem('showDiscontinued') === '1';
-    sortEl.value = localStorage.getItem('sort') || 'name';
-    qEl.value = localStorage.getItem('query') || '';
-    (function initTheme(){
-      const saved = localStorage.getItem('theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', saved);
-      themeToggle.checked = saved === 'light';
-    })();
-
-    emailRecipientEl.value = localStorage.getItem('lowStockEmail') || '';
-    emailRecipientEl.addEventListener('input', () => localStorage.setItem('lowStockEmail', emailRecipientEl.value.trim()));
-
-    themeToggle.addEventListener('change',()=>{
-      const t = themeToggle.checked ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', t);
-      localStorage.setItem('theme', t);
-    });
-
-    const setHeaderHeight = () => { document.documentElement.style.setProperty('--header-h', hdr.offsetHeight + 'px'); };
-    setHeaderHeight();
-    addEventListener('resize', setHeaderHeight);
-
-    // ─── Live Firebase lyttere ───
-    onValue(ref(db,'inventory'), snap=>{ items = snap.val() || {}; renderAll(); });
-    onValue(ref(db,'purchases'), snap=>{ purchases = snap.val() || {}; renderPurchaseLog(); });
-
-    // ─── Helpers ───
-    async function compressImage(file, maxW=520, quality=0.72){
-      return new Promise((resolve,reject)=>{
-        const img=new Image(); const url=URL.createObjectURL(file);
-        img.onload=()=>{
-          const scale=Math.min(1, maxW/img.width);
-          const w=Math.max(1, Math.round(img.width*scale));
-          const h=Math.max(1, Math.round(img.height*scale));
-          const c=document.createElement('canvas'); c.width=w; c.height=h;
-          const ctx=c.getContext('2d');
-          ctx.drawImage(img,0,0,w,h);
-          c.toBlob(b=>{
-            URL.revokeObjectURL(url);
-            resolve(b||file);
-          }, 'image/jpeg', quality);
-        };
-        img.onerror=(err)=>{ URL.revokeObjectURL(url); reject(err); };
-        img.src=url;
-      });
+  let html = '';
+  if (sort === 'natural') {
+    for (const group of FLOW) {
+      const sub = arr.filter(x => sectionMeta(x).key === group.key);
+      if (!sub.length) continue;
+      html += `<div class="section-label">${esc(group.label)}</div><div class="card-grid">${sub.map(itemCardHtml).join('')}</div>`;
     }
-
-    function blobToDataURL(blob){
-      return new Promise((resolve,reject)=>{
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    async function imageFileToDataURL(file){
-      // Gemmer et lille, komprimeret profilbillede direkte i Realtime Database.
-      // Det er mere stabilt på GitHub Pages end Firebase Storage, fordi Storage rules/bucket ikke kan blokere visningen.
-      const small = await compressImage(file, 420, 0.68);
-      return await blobToDataURL(small);
-    }
-
-    // Versionér kun normale URL'er. Data-URL billeder må ikke få ?v=..., ellers går de i stykker.
-    function versioned(url, ts){
-      if(!url) return url;
-      if(url.startsWith('data:') || url.startsWith('blob:')) return url;
-      const sep = url.includes('?') ? '&' : '?';
-      return `${url}${sep}v=${encodeURIComponent(ts||Date.now())}`;
-    }
-
-    async function uploadImage(file, path){
-      // Beholdt som fallback hvis du senere vil bruge Firebase Storage igen.
-      const small = await compressImage(file, 900, 0.78);
-      const r = sRef(storage, path);
-      const meta = {
-        contentType: small.type || 'image/jpeg',
-        cacheControl: 'no-cache, no-store, must-revalidate'
-      };
-      const snap = await uploadBytes(r, small, meta);
-      return await getDownloadURL(snap.ref);
-    }
-
-    async function saveImageForItem(file, itemId){
-      if(!file) return null;
-      try{
-        // Mest robuste løsning: billedet gemmes som et lille profilbillede direkte på varen i databasen.
-        return await imageFileToDataURL(file);
-      }catch(err){
-        console.warn('Direkte billed-gem fejlede. Prøver Firebase Storage som fallback.', err);
-        try{
-          const path = `inventory/${itemId}-${Date.now()}.jpg`;
-          return await uploadImage(file, path);
-        }catch(storageErr){
-          console.error('Billed-upload fejlede:', storageErr);
-          alert('Kunne ikke gemme billede. Prøv et mindre billede eller tag et nyt foto.');
-          return null;
-        }
-      }
-    }
-
-    async function uploadImageForItem(file, it){
-      const itemId = typeof it === 'string' ? it : it.id;
-      return await saveImageForItem(file, itemId);
-    }
-
-    const id = () => push(ref(db,'inventory')).key;
-    const normalizeName = s => (s||"")
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
-      .replace(/[,. ;:\/()\-]/g,' ').replace(/\s+/g,' ').trim();
-    const aliasToCanonical = v => {
-      const n = normalizeName(v);
-      if(n.includes('pepsi max')) return 'Pepsi Max 0,5L';
-      if(n.includes('guldbams')) return 'Haribo Guldbamser';
-      if(n.includes('popcorn')) return 'Mellem popcorn';
-      return null;
-    };
-    const catEmoji = c => { if(c.includes('Sodavand')) return '🥤'; if(c.includes('Popcorn')) return '🍿'; if(c.includes('Slik')) return '🍬'; if(c.includes('Barer')) return '🍫'; return '📦'; };
-    const placeholderSVG = (text,emoji) => {
-      const svg = `\n<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">\n<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">\n<stop offset="0%" stop-color="#0f1a2a"/><stop offset="100%" stop-color="#1b2b45"/>\n</linearGradient></defs>\n<rect width="100%" height="100%" fill="url(#g)"/>\n<text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui" font-size="90" fill="#cfe1ff" opacity="0.9">${emoji}</text>\n<text x="50%" y="75%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui" font-size="28" fill="#cfe1ff" opacity="0.9">${text}</text>\n</svg>`;
-      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-    };
-
-    const toast = (msg, ms=1800) => { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), ms); };
-    const defaultReorder = () => Number(localStorage.getItem('defReorder')||'2');
-    const parseNum = v => Math.max(0, Number(String(v ?? 0).replace(',','.')) || 0);
-    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const isDiscontinued = it => !!it.discontinued;
-    const lowFlag = it => !isDiscontinued(it) && (it.stock||0) <= (it.reorder ?? defaultReorder());
-    const savePrefs = () => {
-      localStorage.setItem('onlyLow', onlyLowEl.checked ? '1' : '0');
-      localStorage.setItem('showDiscontinued', showDiscontinuedEl.checked ? '1' : '0');
-      localStorage.setItem('sort', sortEl.value);
-      localStorage.setItem('query', qEl.value);
-      localStorage.setItem('activeCat', activeCat);
-    };
-
-    // ─── Render ───
-    function renderAll(){ renderTabs(); renderCards(); renderStats(); renderShoppingList(); }
-    function renderTabs(){
-      tabsEl.innerHTML = '';
-      CATS.forEach(cat=>{
-        const b = document.createElement('button');
-        b.className = 'tab' + (cat===activeCat?' active':'');
-        b.textContent = cat;
-        b.onclick = ()=>{ activeCat=cat; savePrefs(); renderAll(); };
-        tabsEl.appendChild(b);
-      });
-    }
-    qEl.addEventListener('input', ()=>{ savePrefs(); renderCards(); });
-    sortEl.addEventListener('change', ()=>{ savePrefs(); renderCards(); });
-    onlyLowEl.addEventListener('change', ()=>{ savePrefs(); renderAll(); });
-    showDiscontinuedEl.addEventListener('change', ()=>{ savePrefs(); renderAll(); });
-
-    function cardSort(a,b){
-      switch(sortEl.value){
-        case 'stockAsc': return (a.stock||0)-(b.stock||0);
-        case 'stockDesc': return (b.stock||0)-(a.stock||0);
-        case 'soldDesc': return (b.sold||0)-(a.sold||0);
-        case 'updatedDesc': return (b.updatedAt||0)-(a.updatedAt||0);
-        default: return a.name.localeCompare(b.name,'da');
-      }
-    }
-    function matchQuery(it){
-      const q = qEl.value.trim().toLowerCase();
-      if(!q) return true;
-      return it.name.toLowerCase().includes(q) || (it.cat||'').toLowerCase().includes(q);
-    }
-
-    function renderCards(){
-      cardsEl.innerHTML = '';
-      const arr = Object.values(items)
-        .filter(it => showDiscontinuedEl.checked || !isDiscontinued(it))
-        .filter(it => (activeCat==='Alle' || it.cat===activeCat))
-        .filter(it => matchQuery(it))
-        .filter(it => !onlyLowEl.checked || lowFlag(it))
-        .sort(cardSort);
-
-      if(!arr.length){
-        cardsEl.innerHTML = '<div class="empty">Ingen varer matcher filtrene.</div>';
-        return;
-      }
-
-      arr.forEach(it=>{
-        const card = document.createElement('div'); card.className = 'card' + (lowFlag(it) ? ' low' : '') + (isDiscontinued(it) ? ' discontinued' : '');
-        const img = document.createElement('img'); img.className='thumb';
-        img.src = it.img ? versioned(it.img, it.imgUpdatedAt || it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
-        img.onerror = ()=>{ img.onerror=null; img.src=placeholderSVG(it.name, catEmoji(it.cat)); };
-        img.alt=it.name; card.appendChild(img);
-
-        const meta = document.createElement('div'); meta.className='meta';
-
-        const nameRow = document.createElement('div'); nameRow.className='name';
-        const n = document.createElement('div'); n.textContent = it.name;
-        const badge = document.createElement('span'); badge.className='cat'; badge.textContent = it.cat; nameRow.append(n,badge);
-        if(isDiscontinued(it)){ const d = document.createElement('span'); d.className='pill discontinued-pill'; d.textContent='Udgået'; nameRow.appendChild(d); }
-
-        const stockRow = document.createElement('div'); stockRow.className='row';
-        const left = document.createElement('div'); left.className='qty';
-        const minus = document.createElement('button'); minus.textContent='–'; minus.onclick=()=>changeStock(it, -(it.step||1));
-        const val = document.createElement('span'); val.className='val'; val.title='Klik for at redigere';
-        val.textContent = `På lager: ${(it.stock||0).toString().replace('.',',')} ${it.unit||''}`;
-        val.onclick = ()=>{
-          const n = prompt(`Indstil lager for "${it.name}"`, String(it.stock||0));
-          if(n!==null){
-            const v = Math.max(0, Number(n.replace(',','.')));
-            update(ref(db,`inventory/${it.id}`), { stock: v, updatedAt: Date.now() });
-          }
-        };
-        const plus = document.createElement('button'); plus.textContent='+'; plus.onclick=()=>changeStock(it, it.step||1);
-        left.append(minus,val,plus);
-        const right = document.createElement('div'); right.className='pill'; right.textContent = `Solgt: ${it.sold||0}`;
-        stockRow.append(left,right);
-
-        const row2 = document.createElement('div'); row2.className='row row-actions';
-        const info = document.createElement('div'); info.className='pill';
-        const ro = (it.reorder ?? defaultReorder());
-        info.textContent = `Lav-lager grænse: ${ro}`; info.title = 'Klik for at ændre'; info.style.cursor='pointer';
-        info.onclick = ()=>{
-          const n = prompt('Ny lav-lager grænse', String(ro));
-          if(n===null) return;
-          const v = Math.max(0, Number(n.replace(',','.')));
-          update(ref(db,`inventory/${it.id}`), { reorder: v, updatedAt: Date.now() });
-        };
-
-        const actions = document.createElement('div'); actions.className='actions';
-        // Direkte <label><input type=file></label> er mere stabilt på mobil end skjulte inputs med .click().
-        const handleImageChange = async (e)=>{
-          const f=e.target.files && e.target.files[0];
-          if(!f) return;
-          toast('Gemmer billede…');
-          const savedUrl = await uploadImageForItem(f, it);
-          if(savedUrl){
-            const ts = Date.now();
-            img.src = savedUrl; // vis med det samme
-            await update(ref(db,`inventory/${it.id}`), { img:savedUrl, imgUpdatedAt: ts, updatedAt: ts });
-            toast('Billede opdateret');
-          }else{
-            img.src = it.img ? versioned(it.img, it.imgUpdatedAt || it.updatedAt) : placeholderSVG(it.name, catEmoji(it.cat));
-          }
-          e.target.value='';
-        };
-        const bCamera = fileBtn('Kamera', 'image/*', 'environment', handleImageChange);
-        const bGallery = fileBtn('Billede', 'image/*', '', handleImageChange);
-        const bEdit = btn('Redigér','ghost', ()=> openEditModal(it));
-        const bBuy = btn('Købt ind','ok', ()=> openPurchaseModal(it));
-        const bSortiment = isDiscontinued(it)
-          ? btn('Genaktivér','ok', ()=> setDiscontinued(it, false))
-          : btn('Udgået','warn', ()=> setDiscontinued(it, true));
-        actions.append(bCamera,bGallery,bEdit,bBuy,bSortiment);
-        row2.append(info, actions);
-
-        meta.append(nameRow, stockRow, row2);
-        card.appendChild(meta);
-        cardsEl.appendChild(card);
-      });
-    }
-
-    function btn(label, cls, on){ const b=document.createElement('button'); b.className='btn '+cls; b.textContent=label; b.onclick=on; return b; }
-
-    function fileBtn(label, accept, capture, onChange){
-      const l = document.createElement('label');
-      l.className = 'btn ghost file-action';
-      l.textContent = label;
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = accept || 'image/*';
-      if(capture) input.setAttribute('capture', capture);
-      input.addEventListener('change', onChange);
-      l.appendChild(input);
-      return l;
-    }
-
-    function renderStats(){
-      const arr = Object.values(items);
-      const active = arr.filter(it => !isDiscontinued(it));
-      statCount.textContent = active.length;
-      statLow.textContent = active.filter(lowFlag).length;
-      statDiscontinued.textContent = arr.filter(isDiscontinued).length;
-      statSold.textContent = active.reduce((s,it)=>s+(it.sold||0),0);
-    }
-
-    function lowStockItems(){
-      return Object.values(items).filter(lowFlag).sort((a,b)=> (a.cat||'').localeCompare(b.cat||'', 'da') || a.name.localeCompare(b.name,'da'));
-    }
-
-    function fmtQty(v){
-      const n = Number(v || 0);
-      return Number.isInteger(n) ? String(n) : String(+n.toFixed(2)).replace('.', ',');
-    }
-
-    function fmtUpdated(ts){
-      if(!ts) return 'ukendt';
-      return new Date(ts).toLocaleDateString('da-DK', {
-        day:'2-digit', month:'2-digit', year:'numeric'
-      });
-    }
-
-    function emailDateKey(ts){
-      if(!ts) return 'Ukendt dato';
-      return fmtUpdated(ts);
-    }
-
-    function byNewestUpdateThenName(a,b){
-      return Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'da');
-    }
-
-    function pushEmailSection(lines, list){
-      const groups = new Map();
-      list.slice().sort(byNewestUpdateThenName).forEach(it=>{
-        const key = emailDateKey(it.updatedAt);
-        if(!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(it);
-      });
-      groups.forEach((group, date)=>{
-        lines.push(date);
-        lines.push('');
-        group.forEach(it => pushEmailItem(lines, it));
-      });
-    }
-
-    function isUpdatedWithinLastMonth(it){
-      const ts = Number(it.updatedAt || 0);
-      if(!ts) return false;
-      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-      return Date.now() - ts <= thirtyDaysMs;
-    }
-
-    function pushEmailItem(lines, it){
-      const stock = fmtQty(it.stock || 0);
-      const unit = it.unit || 'stk';
-      const updated = fmtUpdated(it.updatedAt);
-      lines.push(`• ${it.name}`);
-      lines.push(`  På lager: ${stock} ${unit}`);
-      lines.push(`  Sidst opdateret: ${updated}`);
-      lines.push('');
-    }
-
-    function buildLowStockEmail(){
-      const low = lowStockItems();
-      const recent = low.filter(isUpdatedWithinLastMonth);
-      const older = low.filter(it => !isUpdatedWithinLastMonth(it));
-      const now = new Date().toLocaleString('da-DK', {
-        day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
-      });
-      const subject = `Indkøbsliste fra Sortiment liste – ${low.length} varer`;
-      const lines = [
-        'Hej,',
-        '',
-        `Her er indkøbslisten fra Sortiment liste.`,
-        `Dato: ${now}`,
-        '',
-        `I alt: ${low.length} varer under lav-lager.`,
-        ''
-      ];
-
-      if(!low.length){
-        lines.push('Ingen varer er under lav-lager lige nu.');
-      } else {
-        lines.push(`NYLIGT ÆNDRET - sidste 30 dage (${recent.length})`);
-        lines.push('========================================');
-        lines.push('');
-        if(recent.length){
-          pushEmailSection(lines, recent);
-        } else {
-          lines.push('Ingen varer i denne sektion.', '');
-        }
-
-        // Fire tomme linjer mellem sektionerne gør mailen lettere at læse på telefonen.
-        lines.push('', '', '', '');
-
-        lines.push(`ÆLDRE VARER - mere end 30 dage siden ændring (${older.length})`);
-        lines.push('========================================');
-        lines.push('');
-        if(older.length){
-          pushEmailSection(lines, older);
-        } else {
-          lines.push('Ingen varer i denne sektion.', '');
-        }
-      }
-      lines.push('Mvh', 'Sortiment liste');
-      return { subject, body: lines.join('\n'), items: low };
-    }
-
-    function openMailClientLowStock(){
-      const { subject, body } = buildLowStockEmail();
-      const to = emailRecipientEl.value.trim().replace(/\s+/g,'');
-      const href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      location.href = href;
-      toast('Åbner email-klient med indkøbslisten');
-    }
-
-    function handleEmailButton(){
-      // Den rigtige automatiske søndagsmail sendes af GitHub Actions.
-      // Fra den offentlige GitHub Pages-side åbner vi kun en sikker manuel mailkladde.
-      openMailClientLowStock();
-    }
-
-    emailLowStockBtn.addEventListener('click', handleEmailButton);
-    openEmailClientBtn.addEventListener('click', openMailClientLowStock);
-
-    copyLowStockBtn.addEventListener('click', async()=>{
-      const { body } = buildLowStockEmail();
-      try{
-        await navigator.clipboard.writeText(body);
-        toast('Indkøbsliste kopieret');
-      }catch(err){
-        prompt('Kopiér indkøbslisten herfra:', body);
-      }
-    });
-
-    function renderShoppingList(){
-      shoppingList.innerHTML = '';
-      const low = lowStockItems();
-      if(!low.length){ shoppingList.innerHTML = '<div class="empty">Ingen varer under grænsen 🎉</div>'; return; }
-      low.forEach(it=>{
-        const row = document.createElement('div'); row.className='list-item';
-        const left = document.createElement('div'); left.innerHTML = `<strong>${esc(it.name)}</strong><br><span style="opacity:.8">${esc(it.cat)} • Lager: ${it.stock||0} ${esc(it.unit||'')} • Grænse: ${it.reorder ?? defaultReorder()}</span>`;
-        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px'; right.style.alignItems='center'; right.style.flexWrap='wrap';
-        const qty = document.createElement('input'); qty.type='number'; qty.step='0.25'; qty.min='0'; qty.placeholder='Køb mængde'; qty.style.width='120px';
-        qty.value = Math.max(0, (it.reorder ?? defaultReorder()) - (it.stock||0));
-        const price = document.createElement('input'); price.type='number'; price.step='0.01'; price.min='0'; price.placeholder='Pris (valgfri)'; price.style.width='120px';
-        const note = document.createElement('input'); note.type='text'; note.placeholder='Notat'; note.style.width='160px';
-        const b = document.createElement('button'); b.className='btn ok'; b.textContent='Købt'; b.onclick=()=> handlePurchase(it, Number(qty.value||0), Number(price.value||0)||null, note.value.trim()||null, null);
-        right.append(qty, price, note, b);
-        row.append(left,right);
-        shoppingList.append(row);
-      });
-    }
-
-    purchaseSelectedBtn.addEventListener('click', async()=>{
-      const rows = shoppingList.querySelectorAll('.list-item');
-      let count=0;
-      for(const row of rows){
-        const [qtyEl, priceEl, noteEl] = row.querySelectorAll('input');
-        const name = row.querySelector('strong').textContent;
-        const it = Object.values(items).find(x=>x.name===name);
-        if(!it) continue;
-        const qty = Number(qtyEl.value||0);
-        if(qty>0){
-          await handlePurchase(it, qty, Number(priceEl.value||0)||null, noteEl.value.trim()||null, null);
-          count++;
-        }
-      }
-      toast(`Markerede ${count} indkøb`);
-    });
-
-    function renderPurchaseLog(){
-      purchaseLogEl.innerHTML = '';
-      const arr = Object.values(purchases||{}).sort((a,b)=> (b.ts||0)-(a.ts||0)).slice(0,50);
-      if(!arr.length){ purchaseLogEl.innerHTML='<div class="empty">Ingen indkøb registreret endnu.</div>'; return; }
-      arr.forEach(p=>{
-        const row = document.createElement('div'); row.className='list-item';
-        const left = document.createElement('div');
-        const d = new Date(p.ts||Date.now());
-        left.innerHTML = `<strong>${p.name}</strong><br><span style="opacity:.8">${d.toLocaleString('da-DK')} • +${p.qty} ${p.unit||''} ${p.price?`• ${p.price.toFixed(2)} kr`:''} ${p.note?`• ${p.note}`:''}</span>`;
-        const right = document.createElement('div');
-        const undo = btn('Fortryd','ghost',()=> undoPurchase(p));
-        right.append(undo);
-        row.append(left,right);
-        purchaseLogEl.append(row);
-      });
-    }
-
-    async function undoPurchase(p){
-      const itemRef = ref(db, `inventory/${p.itemId}`);
-      const snap = await get(itemRef);
-      const it = snap.val(); if(!it) return;
-      const newStock = Math.max(0, (it.stock||0) - p.qty);
-      await update(itemRef, { stock: newStock, updatedAt: Date.now() });
-      await remove(ref(db, `purchases/${p.id}`));
-      toast('Indkøb fortrudt');
-    }
-
-    function changeStock(it, delta){
-      if(isDiscontinued(it)){ toast('Varen er markeret som udgået'); return; }
-      const newStock = Math.max(0, +(((it.stock||0) + delta).toFixed(3)));
-      update(ref(db,`inventory/${it.id}`), { stock: newStock, updatedAt: Date.now() });
-    }
-
-    async function setDiscontinued(it, value){
-      if(!it) return;
-      const text = value
-        ? `Markér ${it.name} som udgået af sortiment? Den fjernes fra lav-lager, indkøbsliste og emails.`
-        : `Genaktivér ${it.name} i sortimentet?`;
-      if(!confirm(text)) return;
-      await update(ref(db,`inventory/${it.id}`), {
-        discontinued: !!value,
-        discontinuedAt: value ? Date.now() : null,
-        updatedAt: Date.now()
-      });
-      toast(value ? 'Vare markeret som udgået' : 'Vare genaktiveret');
-    }
-
-    // ─── Edit item modal ───
-    let editItem = null;
-    function openEditModal(it){
-      editItem = it;
-      em.title.textContent = `Redigér – ${it.name}`;
-      em.name.value = it.name || '';
-      em.cat.value = it.cat || CATS[1];
-      em.stock.value = it.stock ?? 0;
-      em.unit.value = it.unit || 'stk';
-      em.step.value = it.step || 1;
-      em.reorder.value = it.reorder ?? defaultReorder();
-      em.discontinued.checked = isDiscontinued(it);
-      em.imgFile.value = '';
-      em.root.classList.add('open');
-      em.root.setAttribute('aria-hidden','false');
-      setTimeout(()=>em.name.focus(), 0);
-    }
-    em.cancel.onclick = ()=>{ em.root.classList.remove('open'); em.root.setAttribute('aria-hidden','true'); };
-    em.save.onclick = async()=>{
-      if(!editItem) return;
-      const name = em.name.value.trim();
-      if(!name){ alert('Varenavn mangler'); return; }
-      const upd = {
-        name,
-        cat: em.cat.value,
-        stock: parseNum(em.stock.value),
-        unit: em.unit.value.trim() || 'stk',
-        step: Math.max(0.01, Number(String(em.step.value || 1).replace(',','.')) || 1),
-        reorder: parseNum(em.reorder.value),
-        discontinued: !!em.discontinued.checked,
-        discontinuedAt: em.discontinued.checked ? (editItem.discontinuedAt || Date.now()) : null,
-        updatedAt: Date.now()
-      };
-      const f = em.imgFile.files && em.imgFile.files[0];
-      if(f){
-        const url = await uploadImageForItem(f, editItem);
-        if(url){ upd.img = url; upd.imgUpdatedAt = Date.now(); }
-      }
-      await update(ref(db,`inventory/${editItem.id}`), upd);
-      em.cancel.click();
-      toast('Vare opdateret');
-    };
-
-    // ─── Purchase modal ───
-    let modalItem = null;
-    function openPurchaseModal(it){
-      modalItem = it; pm.title.textContent = `Købt ind – ${it.name}`;
-      pm.qty.value = it.step || 1; pm.price.value = ''; pm.note.value=''; pm.reorder.value = (it.reorder ?? defaultReorder());
-      pm.root.classList.add('open'); pm.root.setAttribute('aria-hidden','false');
-    }
-    pm.cancel.onclick = ()=>{ pm.root.classList.remove('open'); pm.root.setAttribute('aria-hidden','true'); };
-    pm.save.onclick = ()=>{
-      const qty = Math.max(0, Number(pm.qty.value||0));
-      const price = Number(pm.price.value||0)||null;
-      const note = pm.note.value.trim()||null;
-      const re = Number(pm.reorder.value||NaN); const newReorder = isNaN(re) ? null : re;
-      handlePurchase(modalItem, qty, price, note, newReorder);
-      pm.cancel.click();
-    };
-    addEventListener('keydown', e=>{
-      if(e.key==='Escape' && pm.root.classList.contains('open')) pm.cancel.click();
-      if(e.key==='Escape' && em.root.classList.contains('open')) em.cancel.click();
-    });
-
-    async function handlePurchase(it, qty, price, note, reorder){
-      if(!it || qty<=0) return;
-      if(isDiscontinued(it)){ toast('Varen er udgået af sortiment'); return; }
-      const newStock = (it.stock||0) + qty;
-      const upd = { stock: newStock, updatedAt: Date.now() };
-      if(reorder!==null && reorder!==undefined) upd.reorder = reorder;
-      await update(ref(db,`inventory/${it.id}`), upd);
-
-      const pId = push(ref(db,'purchases')).key;
-      const p = { id:pId, itemId: it.id, name: it.name, unit: it.unit||'', qty, price: price||null, note: note||null, ts: Date.now() };
-      await set(ref(db,`purchases/${pId}`), p);
-      toast(`+${qty} ${it.unit||''} til ${it.name}`);
-    }
-
-    // ─── CSV import ───
-    const CSV_HEADER = ["dato","varenr","varenavn","kategori","antalsolgt","nettooms","moms","bruttooms"];
-    csvInput.addEventListener('change', async e=>{
-      const file = e.target.files[0];
-      if(!file) return;
-      const text = await file.text();
-      applyCSV(text, document.getElementById('cbDeduct').checked);
-      csvInput.value='';
-    });
-
-    function parseCSV(text){
-      const lines = text.replace(/\r\n/g,'\n').split('\n').filter(l=>l.trim());
-      const rows=[];
-      for(const line of lines){
-        const out=[]; let cur='', inQ=false;
-        for(const ch of line){
-          if(ch==='"'){ inQ=!inQ; continue; }
-          if(ch===';' && !inQ){ out.push(cur); cur=''; continue; }
-          cur+=ch;
-        }
-        out.push(cur); rows.push(out);
-      }
-      return rows;
-    }
-
-    async function applyCSV(txt, deduct){
-      const rows = parseCSV(txt);
-      if(!rows.length){ alert('CSV tom'); return; }
-      const header = rows[0].map(h=>h.trim().toLowerCase());
-      if(!CSV_HEADER.every((h,i)=>header[i]===h)){ if(!confirm('Header matcher ikke. Fortsæt?')) return; }
-      const sums = new Map();
-      for(let i=1;i<rows.length;i++){
-        const r=rows[i]; if(r.length<5) continue;
-        const name=r[2].trim(); const qty = Number(r[4].replace(/\./g,'').replace(',','.'));
-        if(!name || !isFinite(qty)) continue;
-        sums.set(name, (sums.get(name)||0)+qty);
-      }
-      const unmatched=[];
-      sums.forEach((qty,csvName)=>{
-        const canon = aliasToCanonical(csvName)||csvName;
-        const entry = Object.values(items).find(it=>!isDiscontinued(it) && normalizeName(it.name)===normalizeName(canon));
-        if(entry){
-          const soldNew = (entry.sold||0)+qty;
-          const stockNew = deduct ? Math.max(0, (entry.stock||0)-qty) : (entry.stock||0);
-          update(ref(db,`inventory/${entry.id}`), { sold: soldNew, stock: stockNew, updatedAt: Date.now() });
-        } else {
-          unmatched.push({ name: csvName, sold: qty });
-        }
-      });
-      renderUnmatched(unmatched);
-      toast('CSV anvendt');
-    }
-
-    function renderUnmatched(arr){
-      unmatchedList.innerHTML='';
-      if(!arr.length){ unmatchedSection.classList.add('hidden'); return; }
-      unmatchedSection.classList.remove('hidden');
-      arr.forEach(u=>{
-        const row=document.createElement('div'); row.className='list-item';
-        const left=document.createElement('div'); left.innerHTML = `<strong>${u.name}</strong><br><span style="opacity:.8">Solgt: ${u.sold}</span>`;
-        const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
-        const sel=document.createElement('select'); CATS.slice(1).forEach(c=>{ const o=document.createElement('option'); o.textContent=c; sel.appendChild(o); });
-        const unit=document.createElement('input'); unit.type='text'; unit.placeholder='Enhed'; unit.style.width='100px';
-        const step=document.createElement('input'); step.type='number'; step.step='0.25'; step.min='0.01'; step.placeholder='Trin'; step.style.width='90px';
-        const ro=document.createElement('input'); ro.type='number'; ro.step='0.25'; ro.min='0'; ro.placeholder='Lav-lager'; ro.style.width='90px'; ro.value = defaultReorder();
-        const btnAdd=btn('Tilføj','primary',()=>{
-          const newId = id();
-          const entry = { id:newId, name:u.name, cat:sel.value, img:'', sold:u.sold, stock:0, unit:unit.value||'stk', step:Math.max(0.01, Number(step.value||1)), reorder:Number(ro.value||defaultReorder()), discontinued:false, discontinuedAt:null, updatedAt: Date.now() };
-          set(ref(db,`inventory/${newId}`), entry);
-          row.remove(); if(!unmatchedList.children.length) unmatchedSection.classList.add('hidden');
-        });
-        right.append(sel,unit,step,ro,btnAdd); row.append(left,right); unmatchedList.append(row);
-      });
-    }
-
-    // ─── JSON import/export ───
-    jsonInput.addEventListener('change', async e=>{
-      const file = e.target.files[0]; if(!file) return;
-      try{
-        const txt = await file.text(); const data = JSON.parse(txt); if(!Array.isArray(data.items)) throw new Error('Forkert format');
-        set(ref(db,'inventory'), {});
-        data.items.forEach(x=>{
-          const newId = x.id || id();
-          const entry = { id:newId, name:x.name, cat:x.cat, img:x.img||'', sold:0, stock:x.stock||0, unit:x.unit||'', step:x.step||1, reorder: x.reorder ?? defaultReorder(), discontinued: !!x.discontinued, discontinuedAt: x.discontinuedAt || null, updatedAt: Date.now() };
-          set(ref(db,`inventory/${newId}`), entry);
-        });
-        alert(`Importeret ${data.items.length} varer`);
-      }catch(err){ alert('Kunne ikke importere JSON: '+ err.message); }
-      finally{ jsonInput.value=''; }
-    });
-
-    exportJSONBtn.addEventListener('click', ()=>{
-      const data = { items: Object.values(items) };
-      const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='inventar_export.json'; a.click(); URL.revokeObjectURL(a.href);
-    });
-
-    exportPurchasesBtn.addEventListener('click', ()=>{
-      const arr = Object.values(purchases||{}).sort((a,b)=> (a.ts||0)-(b.ts||0));
-      const rows = [['DatoTid','Varenavn','Mængde','Enhed','Pris','Notat']].concat(
-        arr.map(p=>[
-          new Date(p.ts).toLocaleString('da-DK'), p.name, String(p.qty).replace('.',','), p.unit||'', p.price!=null?p.price.toFixed(2).replace('.',','):'', p.note||''
-        ])
-      );
-      const csv = rows.map(r=> r.map(v=> typeof v==='string' && v.includes(';') ? '"'+v.replace('"','""')+'"' : v).join(';')).join('\n');
-      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='indkoeb_log.csv'; a.click(); URL.revokeObjectURL(a.href);
-    });
-
-    resetSalesBtn.addEventListener('click', ()=>{
-      if(!confirm('Nulstil solgt for alle?')) return;
-      Object.values(items).forEach(it=> update(ref(db,`inventory/${it.id}`), { sold:0, updatedAt: Date.now() }));
-    });
-
-    downloadTplBtn.addEventListener('click', ()=>{
-      const tpl = [
-        'Dato;Varenr;Varenavn;Kategori;AntalSolgt;NettoOms;Moms;BruttoOms',
-        '2025-08-01;P001;Lille popcorn;Snacks;8;240,00;60,00;300,00',
-        '2025-08-01;D021;Pepsi Max 0,5L;Sodavand;5;76,00;19,00;95,00'
-      ].join('\n');
-      const blob = new Blob([tpl],{type:'text/csv'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kiosk_eksempel.csv'; a.click(); URL.revokeObjectURL(a.href);
-    });
-
-    // ─── Add item (billede stadig anbefalet, men ikke længere hårdt påkrævet) ───
-    document.getElementById('addItem').addEventListener('click', async ()=>{
-      const name = document.getElementById('newName').value.trim();
-      if(!name){ alert('Varenavn mangler'); return; }
-
-      const baseId = id();
-      let imgUrl = '';
-      const file = newImgFile && newImgFile.files && newImgFile.files[0];
-      if(file){
-        imgUrl = await saveImageForItem(file, baseId) || '';
-      }
-
-      const entry = {
-        id: baseId,
-        name,
-        cat: newCat.value,
-        img: imgUrl,
-        stock: Number(document.getElementById('newStock').value||0),
-        unit: document.getElementById('newUnit').value.trim()||'stk',
-        step: Math.max(0.01, Number(document.getElementById('newStep').value||1)),
-        reorder: Number(document.getElementById('newReorder').value||defaultReorder()),
-        sold: 0,
-        discontinued: false,
-        discontinuedAt: null,
-        updatedAt: Date.now(),
-        imgUpdatedAt: imgUrl ? Date.now() : 0,
-      };
-      await set(ref(db,`inventory/${entry.id}`), entry);
-      toast('Vare tilføjet');
-
-      ['newName','newStock','newUnit','newStep','newReorder'].forEach(id=> document.getElementById(id).value='');
-      if(newImgFile) newImgFile.value='';
-    });
-
-    // ─── Scroll hide header ───
-    let lastY = pageYOffset;
-    addEventListener('scroll',()=>{
-      const y = pageYOffset;
-      if(y>lastY+5){ hdr.classList.add('hidden-on-scroll'); }
-      else if(y<lastY-5){ hdr.classList.remove('hidden-on-scroll'); }
-      lastY=y;
-    });
-
-    // Restore active tab
-    const ac = localStorage.getItem('activeCat'); if(ac) activeCat = ac;
-
-    // ─── Ekstra: Hjælp til fejlfinding i Storage ───
-    // Hvis du stadig ikke ser nye billeder:
-    // 1) Tjek at storageBucket er KORREKT (<projectId>.appspot.com)
-    // 2) Tjek Firebase Storage Rules: giv midlertidigt write-tilladelse for /inventory/**
-    // 3) Åbn DevTools (F12) → Network → find billed-URL → bekræft at den hentes igen (pga ?v=...)
-    // 4) Se evt. fejl i Console (vi logger upload-fejl).
-  </script>
+  } else {
+    html = `<div class="card-grid">${arr.map(itemCardHtml).join('')}</div>`;
+  }
+
+  $('allList').innerHTML = html || '<div class="panel muted">Ingen varer matcher filtrene.</div>';
+
+  document.querySelectorAll('[data-minus]').forEach(btn => btn.onclick = () => changeStock(btn.dataset.minus, -1));
+  document.querySelectorAll('[data-plus]').forEach(btn => btn.onclick = () => changeStock(btn.dataset.plus, 1));
+  document.querySelectorAll('[data-confirm]').forEach(btn => btn.onclick = () => confirmStock(btn.dataset.confirm));
+  document.querySelectorAll('[data-edit]').forEach(btn => btn.onclick = () => openEdit(btn.dataset.edit));
+}
+
+async function changeStock(id, dir) {
+  const x = items[id];
+  const next = Math.max(0, num(x.stock) + dir * (num(x.step) || 0.25));
+  items[id] = { ...x, stock: next, updatedAt: Date.now() };
+  renderAll();
+  await update(ref(db, `inventory/${id}`), { stock: next, updatedAt: Date.now() });
+}
+
+async function confirmStock(id) {
+  items[id] = { ...items[id], updatedAt: Date.now() };
+  renderAll();
+  await update(ref(db, `inventory/${id}`), { updatedAt: Date.now() });
+  toast('Antal bekræftet');
+}
+
+function renderBuy() {
+  const arr = activeItems().filter(low).sort(naturalSort);
+  if (!arr.length) {
+    $('buyList').innerHTML = '<div class="panel muted" style="margin-top:12px">Ingen varer skal købes.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const group of FLOW) {
+    const sub = arr.filter(x => sectionMeta(x).key === group.key);
+    if (!sub.length) continue;
+    html += `<div class="section-label">${esc(group.label)}</div>`;
+    html += sub.map(x => {
+      const need = Math.max(0, num(x.reorder) - num(x.stock));
+      return `
+        <div class="buy-card">
+          <div class="buy-main">
+            <strong>${esc(x.name)}</strong>
+            <div class="meta">${esc(x.cat || 'Uden kategori')} · senest opdateret ${dateText(x.updatedAt)}</div>
+            <div class="buy-meta-grid">
+              <div class="buy-pill"><div class="label">På lager</div><div class="value">${fmt(x.stock)} ${esc(x.unit || 'stk')}</div></div>
+              <div class="buy-pill"><div class="label">Minimum</div><div class="value">${fmt(x.reorder)} ${esc(x.unit || 'stk')}</div></div>
+              <div class="buy-pill"><div class="label">Skal købes</div><div class="value">${fmt(need)} ${esc(x.unit || 'stk')}</div></div>
+              <div class="buy-pill"><div class="label">Placering</div><div class="value">${esc(sectionMeta(x).label)}</div></div>
+            </div>
+          </div>
+          <div class="buy-qty">Køb ${fmt(need)} ${esc(x.unit || 'stk')}</div>
+        </div>`;
+    }).join('');
+  }
+  $('buyList').innerHTML = html;
+}
+
+function buyText() {
+  const arr = activeItems().filter(low).sort(naturalSort);
+  const lines = [`Indkøbsliste`, new Date().toLocaleDateString('da-DK'), ''];
+  for (const group of FLOW) {
+    const sub = arr.filter(x => sectionMeta(x).key === group.key);
+    if (!sub.length) continue;
+    lines.push(group.label);
+    sub.forEach(x => lines.push(`• ${x.name}: køb ${fmt(Math.max(0, num(x.reorder) - num(x.stock)))} ${x.unit || 'stk'} (på lager ${fmt(x.stock)}, minimum ${fmt(x.reorder)})`));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+async function upload(file, id) {
+  if (!file) return null;
+  const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-z0-9]/gi, '');
+  const path = storageRef(storage, `inventory/${id}-${Date.now()}.${ext}`);
+  await uploadBytes(path, file);
+  return getDownloadURL(path);
+}
+
+function clearNewForm() {
+  ['newName', 'newStock', 'newUnit', 'newStep', 'newReorder'].forEach(id => $(id).value = '');
+  $('newImage').value = '';
+  $('newImagePreview').className = 'preview placeholder';
+  $('newImagePreview').textContent = 'Intet billede valgt';
+}
+
+async function addItem() {
+  const name = $('newName').value.trim();
+  if (!name) {
+    alert('Skriv et varenavn');
+    return;
+  }
+  const p = push(ref(db, 'inventory'));
+  const id = p.key;
+  const file = $('newImage').files?.[0];
+  const img = file ? await upload(file, id) : '';
+  await set(p, {
+    name,
+    cat: $('newCat').value || 'Andet',
+    stock: num($('newStock').value),
+    unit: $('newUnit').value.trim() || 'stk',
+    step: num($('newStep').value) || 0.25,
+    reorder: num($('newReorder').value),
+    img,
+    updatedAt: Date.now(),
+    discontinued: false
+  });
+  clearNewForm();
+  toast('Vare tilføjet');
+}
+
+function openEdit(id) {
+  const x = items[id];
+  if (!x) return;
+  editId = id;
+  fillCategorySelect($('editCat'));
+  $('editName').value = x.name || '';
+  $('editCat').value = x.cat || 'Andet';
+  $('editStock').value = num(x.stock);
+  $('editUnit').value = x.unit || 'stk';
+  $('editStep').value = num(x.step) || 0.25;
+  $('editReorder').value = num(x.reorder);
+  $('editDiscontinued').checked = !!x.discontinued;
+  $('editRouteHint').textContent = routeHint(x);
+  $('editImage').value = '';
+  if (x.img) {
+    $('editImagePreview').className = 'preview';
+    $('editImagePreview').innerHTML = `<img class="preview" src="${esc(x.img)}" alt="${esc(x.name)}">`;
+  } else {
+    $('editImagePreview').className = 'preview placeholder';
+    $('editImagePreview').textContent = 'Intet billede';
+  }
+  $('editModal').classList.add('open');
+}
+
+function closeEdit() {
+  $('editModal').classList.remove('open');
+  editId = null;
+}
+
+async function saveEdit() {
+  if (!editId) return;
+  const old = items[editId];
+  const patch = {
+    name: $('editName').value.trim(),
+    cat: $('editCat').value || 'Andet',
+    stock: num($('editStock').value),
+    unit: $('editUnit').value.trim() || 'stk',
+    step: num($('editStep').value) || 0.25,
+    reorder: num($('editReorder').value),
+    discontinued: $('editDiscontinued').checked,
+    updatedAt: Date.now()
+  };
+  const file = $('editImage').files?.[0];
+  if (file) patch.img = await upload(file, editId);
+  items[editId] = { ...old, ...patch };
+  await update(ref(db, `inventory/${editId}`), patch);
+  closeEdit();
+  renderHome();
+  if (view === 'all') renderAll();
+  if (view === 'buy') renderBuy();
+  if (view === 'count') prepareCount(false);
+  toast('Ændringer gemt');
+}
+
+async function deleteCurrentItem() {
+  if (!editId) return;
+  const x = items[editId];
+  const ok = confirm(`Vil du slette "${x?.name || 'denne vare'}" helt? Dette kan ikke fortrydes.`);
+  if (!ok) return;
+  await remove(ref(db, `inventory/${editId}`));
+  closeEdit();
+  toast('Vare slettet');
+}
+
+function buildOrderDraft(force = false) {
+  if (orderDirty && !force) return;
+  orderDraft = activeItems().slice().sort(naturalSort).map(x => x.id);
+  orderDirty = false;
+}
+
+function renderOrderEditor() {
+  buildOrderDraft(false);
+  const q = ($('orderSearch')?.value || '').trim().toLowerCase();
+  const visible = orderDraft
+    .map((id, index) => ({ item: items[id], index }))
+    .filter(({ item }) => item && (!q || `${item.name || ''} ${item.cat || ''} ${sectionMeta(item).label}`.toLowerCase().includes(q)));
+
+  $('orderStatus').textContent = `${orderDraft.length} aktive varer${orderDirty ? ' · ikke-gemte ændringer' : ''}`;
+  $('orderList').innerHTML = visible.map(({ item, index }) => `
+    <div class="order-row">
+      <div class="order-number">${index + 1}</div>
+      <div>
+        <div class="order-name">${esc(item.name)}</div>
+        <div class="order-meta">${esc(item.cat || 'Uden kategori')} · ${esc(sectionMeta(item).label)}</div>
+      </div>
+      <div class="order-actions">
+        <button class="btn" data-order-up="${item.id}" title="Flyt op">↑</button>
+        <button class="btn" data-order-down="${item.id}" title="Flyt ned">↓</button>
+        <input class="order-position" data-order-pos="${item.id}" type="number" min="1" max="${orderDraft.length}" value="${index + 1}" aria-label="Ny placering">
+      </div>
+    </div>`).join('') || '<div class="muted">Ingen varer matcher søgningen.</div>';
+
+  document.querySelectorAll('[data-order-up]').forEach(btn => btn.onclick = () => moveOrder(btn.dataset.orderUp, -1));
+  document.querySelectorAll('[data-order-down]').forEach(btn => btn.onclick = () => moveOrder(btn.dataset.orderDown, 1));
+  document.querySelectorAll('[data-order-pos]').forEach(input => input.onchange = () => moveOrderTo(input.dataset.orderPos, Number(input.value) - 1));
+}
+
+function moveOrder(id, direction) {
+  const from = orderDraft.indexOf(id);
+  const to = Math.max(0, Math.min(orderDraft.length - 1, from + direction));
+  if (from < 0 || from === to) return;
+  const [moved] = orderDraft.splice(from, 1);
+  orderDraft.splice(to, 0, moved);
+  orderDirty = true;
+  renderOrderEditor();
+}
+
+function moveOrderTo(id, target) {
+  const from = orderDraft.indexOf(id);
+  const to = Math.max(0, Math.min(orderDraft.length - 1, target));
+  if (from < 0 || from === to) return;
+  const [moved] = orderDraft.splice(from, 1);
+  orderDraft.splice(to, 0, moved);
+  orderDirty = true;
+  renderOrderEditor();
+}
+
+async function saveCountOrder() {
+  if (!orderDraft.length) return;
+  const patch = {};
+  orderDraft.forEach((id, index) => patch[`inventory/${id}/countOrder`] = index);
+  await update(ref(db), patch);
+  orderDirty = false;
+  toast('Optællingsrækkefølge gemt');
+  renderOrderEditor();
+}
+
+async function resetCountOrder() {
+  if (!confirm('Vil du fjerne den manuelle rækkefølge og gå tilbage til den automatiske rækkefølge?')) return;
+  const patch = {};
+  activeItems().forEach(item => patch[`inventory/${item.id}/countOrder`] = null);
+  await update(ref(db), patch);
+  orderDirty = false;
+  orderDraft = activeItems().slice().sort((a, b) => {
+    const aa = { ...a }; delete aa.countOrder;
+    const bb = { ...b }; delete bb.countOrder;
+    return naturalSort(aa, bb);
+  }).map(x => x.id);
+  toast('Automatisk rækkefølge gendannet');
+  renderOrderEditor();
+}
+
+function setAdminTab(tab) {
+  document.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === tab));
+  document.querySelectorAll('.admin-pane').forEach(pane => pane.classList.remove('active'));
+  $(`admin-${tab}`).classList.add('active');
+  if (tab === 'order') {
+    buildOrderDraft(true);
+    renderOrderEditor();
+  }
+}
+
+function render() {
+  fillCategorySelect($('newCat'));
+  fillCountFilter();
+  if (!orderDirty) buildOrderDraft(true);
+  renderHome();
+  if (view === 'count') prepareCount(false);
+  if (view === 'buy') renderBuy();
+  if (view === 'all') renderAll();
+  if ($('admin-order')?.classList.contains('active')) renderOrderEditor();
+}
+
+$('theme').onclick = () => {
+  document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+};
+
+document.querySelectorAll('[data-view]').forEach(btn => btn.onclick = () => showView(btn.dataset.view));
+document.querySelectorAll('[data-go]').forEach(btn => btn.onclick = () => showView(btn.dataset.go));
+$('search').oninput = () => { if (view !== 'all') showView('all'); else renderAll(); };
+$('countFilter').onchange = () => prepareCount(true);
+$('sort').onchange = renderAll;
+$('onlyLow').onchange = renderAll;
+$('showDiscontinued').onchange = renderAll;
+$('copyBuy').onclick = async () => { await navigator.clipboard.writeText(buyText()); toast('Indkøbsliste kopieret'); };
+$('mailBuy').onclick = () => location.href = `mailto:?subject=${encodeURIComponent('Indkøbsliste fra Sortimentliste')}&body=${encodeURIComponent(buyText())}`;
+$('addItem').onclick = addItem;
+$('newImage').onchange = () => showFilePreview($('newImage'), $('newImagePreview'));
+$('editImage').onchange = () => showFilePreview($('editImage'), $('editImagePreview'));
+$('editSave').onclick = saveEdit;
+$('editCancel').onclick = closeEdit;
+$('editCloseTop').onclick = closeEdit;
+$('deleteItem').onclick = deleteCurrentItem;
+document.querySelectorAll('[data-admin-tab]').forEach(btn => btn.onclick = () => setAdminTab(btn.dataset.adminTab));
+$('orderSearch').oninput = renderOrderEditor;
+$('saveOrder').onclick = saveCountOrder;
+$('resetOrder').onclick = resetCountOrder;
+$('editModal').onclick = e => { if (e.target === $('editModal')) closeEdit(); };
+$('exportJson').onclick = () => {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sortimentliste-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('importJson').onchange = async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const data = JSON.parse(await file.text());
+  const clean = {};
+  Object.entries(data).forEach(([id, x]) => clean[id] = { ...x, id: undefined });
+  await set(ref(db, 'inventory'), clean);
+  toast('JSON importeret');
+};
+
+onValue(ref(db, 'inventory'), snap => {
+  const raw = snap.val() || {};
+  items = Object.fromEntries(Object.entries(raw).map(([id, x]) => [id, { id, ...x }]));
+  render();
+});
+
+showView('home');
+</script>
 </body>
 </html>
