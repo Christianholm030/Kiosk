@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 
-const REQUIRED = [
+const REQUIRED_ENVIRONMENT_VARIABLES = [
   'FIREBASE_DATABASE_URL',
   'SMTP_HOST',
   'SMTP_PORT',
@@ -11,7 +11,7 @@ const REQUIRED = [
   'EMAIL_TO'
 ];
 
-for (const key of REQUIRED) {
+for (const key of REQUIRED_ENVIRONMENT_VARIABLES) {
   if (!process.env[key]) {
     throw new Error(
       `Missing required environment variable / GitHub secret: ${key}`
@@ -19,64 +19,86 @@ for (const key of REQUIRED) {
   }
 }
 
-const timeZone = 'Europe/Copenhagen';
-const databaseUrl = process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-const auth = process.env.FIREBASE_DATABASE_AUTH || '';
-const defaultReorder = Number(process.env.DEFAULT_REORDER || 2);
+const TIME_ZONE = 'Europe/Copenhagen';
+const DEFAULT_REORDER = Number(process.env.DEFAULT_REORDER || 2);
 
-const url = new URL(`${databaseUrl}/inventory.json`);
+const databaseUrl =
+  process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
 
-if (auth) {
-  url.searchParams.set('auth', auth);
+const databaseAuth =
+  process.env.FIREBASE_DATABASE_AUTH || '';
+
+const inventoryUrl =
+  new URL(`${databaseUrl}/inventory.json`);
+
+if (databaseAuth) {
+  inventoryUrl.searchParams.set('auth', databaseAuth);
 }
 
-const response = await fetch(url);
+/**
+ * Henter sortimentslisten fra Firebase.
+ */
+async function fetchInventory() {
+  const response = await fetch(inventoryUrl);
 
-if (!response.ok) {
-  throw new Error(
-    `Could not read Firebase inventory: ${response.status} ${await response.text()}`
-  );
+  if (!response.ok) {
+    const responseBody = await response.text();
+
+    throw new Error(
+      `Could not read Firebase inventory: ` +
+      `${response.status} ${responseBody}`
+    );
+  }
+
+  const inventory = await response.json();
+
+  return Object.values(inventory || {});
 }
 
-const inventory = await response.json();
-const items = Object.values(inventory || {});
+/**
+ * Konverterer en værdi til et gyldigt tal.
+ */
+function numberValue(value, fallback = 0) {
+  const number = Number(value);
 
+  return Number.isFinite(number)
+    ? number
+    : fallback;
+}
+
+/**
+ * Om varen er markeret som udgået.
+ */
 function isDiscontinued(item) {
   return Boolean(item.discontinued);
 }
 
+/**
+ * Varens minimumslager.
+ */
 function reorderLevel(item) {
-  return Number(item.reorder ?? defaultReorder);
-}
-
-function lowFlag(item) {
-  return (
-    !isDiscontinued(item) &&
-    Number(item.stock || 0) < reorderLevel(item)
+  return numberValue(
+    item.reorder,
+    DEFAULT_REORDER
   );
 }
 
-function fmtQty(value) {
-  const number = Number(value || 0);
+/**
+ * En vare skal købes, når dens lager er lavere end minimum.
+ */
+function isLowStock(item) {
+  const stock = numberValue(item.stock);
 
-  return Number.isInteger(number)
-    ? String(number)
-    : String(+number.toFixed(2)).replace('.', ',');
+  return (
+    !isDiscontinued(item) &&
+    stock < reorderLevel(item)
+  );
 }
 
-function fmtDateOnly(timestamp) {
-  if (!timestamp) {
-    return 'ukendt';
-  }
-
-  return new Intl.DateTimeFormat('da-DK', {
-    timeZone,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).format(new Date(timestamp));
-}
-
+/**
+ * Den manuelle placering, som gemmes fra
+ * Administration → Optællingsrækkefølge.
+ */
 function countOrderValue(item) {
   const order = Number(item.countOrder);
 
@@ -85,7 +107,16 @@ function countOrderValue(item) {
     : Number.MAX_SAFE_INTEGER;
 }
 
-function byCountOrderThenName(a, b) {
+/**
+ * Sorteringen til PDF'en.
+ *
+ * Først anvendes countOrder, så PDF'en følger præcis
+ * samme rækkefølge som optællingen.
+ *
+ * Navnet bruges kun som fallback for varer, der ikke
+ * har fået en manuel countOrder endnu.
+ */
+function compareByCountOrder(a, b) {
   return (
     countOrderValue(a) - countOrderValue(b) ||
     String(a.name || '').localeCompare(
@@ -95,268 +126,438 @@ function byCountOrderThenName(a, b) {
   );
 }
 
-function safeUnit(item) {
-  return String(item.unit || 'stk');
+/**
+ * Formaterer antal med dansk decimalkomma.
+ */
+function formatQuantity(value) {
+  const number = numberValue(value);
+
+  return new Intl.NumberFormat('da-DK', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(number);
 }
 
-const activeItems = items.filter(
-  item => !isDiscontinued(item)
-);
+/**
+ * Formaterer enhed.
+ */
+function unitText(item) {
+  return String(item.unit || 'stk').trim() || 'stk';
+}
 
-const discontinuedItems = items.filter(isDiscontinued);
+/**
+ * Formaterer dato uden klokkeslæt.
+ */
+function formatDate(timestamp) {
+  if (!timestamp) {
+    return 'ukendt';
+  }
 
-const lowItems = activeItems
-  .filter(lowFlag)
-  .sort(byCountOrderThenName);
+  const date = new Date(Number(timestamp));
 
-const now = new Intl.DateTimeFormat('da-DK', {
-  timeZone,
-  weekday: 'long',
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric'
-}).format(new Date());
+  if (Number.isNaN(date.getTime())) {
+    return 'ukendt';
+  }
 
-function createShoppingListPdf(list) {
+  return new Intl.DateTimeFormat('da-DK', {
+    timeZone: TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date);
+}
+
+/**
+ * Dato til mail og PDF-overskrift.
+ */
+function formatCurrentDate() {
+  return new Intl.DateTimeFormat('da-DK', {
+    timeZone: TIME_ZONE,
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(new Date());
+}
+
+/**
+ * Dato til filnavnet.
+ *
+ * en-CA giver formatet YYYY-MM-DD.
+ */
+function fileDate() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
+
+/**
+ * Forkorter tekst, så den ikke løber ud af PDF-kortet.
+ */
+function shortenText(value, maximumLength) {
+  const text = String(value || '');
+
+  if (text.length <= maximumLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maximumLength - 1)}…`;
+}
+
+/**
+ * Opretter PDF'en som en Buffer.
+ *
+ * Vigtigt:
+ * Listen sorteres ikke inde i denne funktion.
+ * Den tegnes direkte i den rækkefølge, den modtages i.
+ */
+function createShoppingListPdf(items, currentDate) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
+    const document = new PDFDocument({
       size: 'A4',
+
       margins: {
-        top: 42,
-        right: 38,
-        bottom: 42,
-        left: 38
+        top: 40,
+        right: 36,
+        bottom: 44,
+        left: 36
       },
+
       bufferPages: true,
+
       info: {
         Title: 'Indkøbsliste fra Sortiment liste',
-        Author: 'Sortiment liste'
+        Author: 'Sortiment liste',
+        Subject: 'Ugentlig indkøbsliste'
       }
     });
 
     const chunks = [];
 
-    doc.on('data', chunk => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+    document.on('data', chunk => {
+      chunks.push(chunk);
+    });
 
-    const pageWidth = doc.page.width;
+    document.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    document.on('error', error => {
+      reject(error);
+    });
+
+    const pageWidth = document.page.width;
+
     const contentWidth =
       pageWidth -
-      doc.page.margins.left -
-      doc.page.margins.right;
+      document.page.margins.left -
+      document.page.margins.right;
 
-    const left = doc.page.margins.left;
-    const cardHeight = 94;
-    const cardGap = 10;
+    const left = document.page.margins.left;
 
-    const bottomLimit =
-      doc.page.height -
-      doc.page.margins.bottom;
+    const pageBottom =
+      document.page.height -
+      document.page.margins.bottom;
 
-    function addHeader() {
-      doc
-        .fillColor('#111827')
+    const cardHeight = 100;
+    const cardSpacing = 10;
+
+    /**
+     * PDF-overskrift på hver side.
+     */
+    function drawHeader() {
+      document
+        .fillColor('#0f172a')
         .font('Helvetica-Bold')
         .fontSize(24)
-        .text('INDKØBSLISTE', left, doc.y, {
-          width: contentWidth
-        });
-
-      doc.moveDown(0.2);
-
-      doc
-        .fillColor('#64748b')
-        .font('Helvetica')
-        .fontSize(10)
         .text(
-          `${now} · ${list.length} varer skal købes`,
+          'INDKØBSLISTE',
           left,
-          doc.y,
+          document.page.margins.top,
           {
             width: contentWidth
           }
         );
 
-      doc.moveDown(1.1);
-    }
-
-    function ensureSpace(height) {
-      if (doc.y + height > bottomLimit) {
-        doc.addPage();
-        addHeader();
-      }
-    }
-
-    function drawSectionHeading(label) {
-      ensureSpace(28 + cardHeight);
-
-      doc.moveDown(0.35);
-
-      doc
-        .fillColor('#334155')
-        .font('Helvetica-Bold')
+      document
+        .fillColor('#64748b')
+        .font('Helvetica')
         .fontSize(10)
         .text(
-          String(label || 'Uden kategori').toUpperCase(),
+          `${currentDate} · ${items.length} varer skal købes`,
           left,
-          doc.y,
+          document.page.margins.top + 34,
           {
-            width: contentWidth,
-            characterSpacing: 0.7
+            width: contentWidth
           }
         );
 
-      doc.moveDown(0.6);
+      document
+        .moveTo(
+          left,
+          document.page.margins.top + 55
+        )
+        .lineTo(
+          left + contentWidth,
+          document.page.margins.top + 55
+        )
+        .lineWidth(0.8)
+        .strokeColor('#cbd5e1')
+        .stroke();
+
+      document.y =
+        document.page.margins.top + 70;
     }
 
-    function drawItem(item) {
-      ensureSpace(cardHeight + cardGap);
+    /**
+     * Starter en ny side, når der ikke er plads
+     * til et helt varekort.
+     */
+    function ensureCardFits() {
+      if (
+        document.y +
+        cardHeight +
+        cardSpacing >
+        pageBottom
+      ) {
+        document.addPage();
+        drawHeader();
+      }
+    }
 
-      const top = doc.y;
-      const stock = Number(item.stock || 0);
+    /**
+     * Tegner ét varekort.
+     */
+    function drawItemCard(item, position) {
+      ensureCardFits();
+
+      const cardTop = document.y;
+      const stock = numberValue(item.stock);
       const minimum = reorderLevel(item);
-      const amount = Math.max(0, minimum - stock);
-      const unit = safeUnit(item);
-      const x = left;
 
-      doc
+      const amountToBuy =
+        Math.max(0, minimum - stock);
+
+      const unit = unitText(item);
+
+      const cardLeft = left;
+      const rightColumnWidth = 160;
+
+      const informationWidth =
+        contentWidth -
+        rightColumnWidth -
+        30;
+
+      /*
+       * Kortets baggrund og kant.
+       */
+      document
         .roundedRect(
-          x,
-          top,
+          cardLeft,
+          cardTop,
           contentWidth,
           cardHeight,
           10
         )
-        .fillAndStroke('#f8fafc', '#cbd5e1');
+        .fillAndStroke(
+          '#f8fafc',
+          '#cbd5e1'
+        );
 
-      doc
+      /*
+       * Varenavn.
+       */
+      document
         .fillColor('#0f172a')
         .font('Helvetica-Bold')
         .fontSize(16)
         .text(
-          String(item.name || 'Unavngivet vare'),
-          x + 14,
-          top + 12,
+          shortenText(
+            item.name || 'Unavngivet vare',
+            55
+          ),
+          cardLeft + 14,
+          cardTop + 12,
           {
-            width: contentWidth - 190,
+            width: informationWidth,
             height: 22,
             ellipsis: true
           }
         );
 
-      doc
+      /*
+       * Kategori og seneste opdatering.
+       */
+      const category =
+        item.cat || 'Uden kategori';
+
+      document
         .fillColor('#64748b')
         .font('Helvetica')
         .fontSize(9)
         .text(
-          `${item.cat || 'Uden kategori'} · senest opdateret ${fmtDateOnly(item.updatedAt)}`,
-          x + 14,
-          top + 36,
+          `${category} · senest opdateret ${formatDate(item.updatedAt)}`,
+          cardLeft + 14,
+          cardTop + 36,
           {
-            width: contentWidth - 190,
-            height: 15,
+            width: informationWidth,
+            height: 14,
             ellipsis: true
           }
         );
 
-      const labelY = top + 58;
-      const valueY = top + 72;
-      const columnWidth = 104;
+      /*
+       * Lille placering/rækkefølge.
+       */
+      document
+        .fillColor('#94a3b8')
+        .font('Helvetica')
+        .fontSize(8)
+        .text(
+          `Placering i optælling: ${position}`,
+          cardLeft + 14,
+          cardTop + 52,
+          {
+            width: informationWidth
+          }
+        );
 
-      const stats = [
-        ['På lager', `${fmtQty(stock)} ${unit}`],
-        ['Minimum', `${fmtQty(minimum)} ${unit}`],
-        ['Skal købes', `${fmtQty(amount)} ${unit}`]
+      /*
+       * Lagerfelter.
+       */
+      const statsTop = cardTop + 68;
+      const statsColumnWidth = 108;
+
+      const statistics = [
+        {
+          label: 'På lager',
+          value: `${formatQuantity(stock)} ${unit}`
+        },
+        {
+          label: 'Minimum',
+          value: `${formatQuantity(minimum)} ${unit}`
+        },
+        {
+          label: 'Skal købes',
+          value: `${formatQuantity(amountToBuy)} ${unit}`
+        }
       ];
 
-      stats.forEach(([label, value], index) => {
-        const statX =
-          x + 14 + index * columnWidth;
+      statistics.forEach((statistic, index) => {
+        const statisticLeft =
+          cardLeft +
+          14 +
+          index * statsColumnWidth;
 
-        doc
+        document
           .fillColor('#64748b')
           .font('Helvetica')
           .fontSize(8)
-          .text(label, statX, labelY, {
-            width: columnWidth - 8
-          });
+          .text(
+            statistic.label,
+            statisticLeft,
+            statsTop,
+            {
+              width: statsColumnWidth - 8
+            }
+          );
 
-        doc
+        document
           .fillColor('#0f172a')
           .font('Helvetica-Bold')
           .fontSize(11)
-          .text(value, statX, valueY, {
-            width: columnWidth - 8
-          });
+          .text(
+            statistic.value,
+            statisticLeft,
+            statsTop + 13,
+            {
+              width: statsColumnWidth - 8,
+              height: 16,
+              ellipsis: true
+            }
+          );
       });
 
-      doc
+      /*
+       * Stor købsmængde i højre side.
+       */
+      document
         .fillColor('#d97706')
         .font('Helvetica-Bold')
         .fontSize(18)
         .text(
-          `Køb ${fmtQty(amount)} ${unit}`,
-          x + contentWidth - 184,
-          top + 34,
+          `Køb ${formatQuantity(amountToBuy)} ${unit}`,
+          cardLeft +
+            contentWidth -
+            rightColumnWidth -
+            14,
+          cardTop + 35,
           {
-            width: 168,
-            align: 'right'
+            width: rightColumnWidth,
+            align: 'right',
+            height: 50,
+            ellipsis: true
           }
         );
 
-      doc.y = top + cardHeight + cardGap;
+      document.y =
+        cardTop +
+        cardHeight +
+        cardSpacing;
     }
 
-    addHeader();
+    drawHeader();
 
-    if (list.length === 0) {
-      doc
+    if (items.length === 0) {
+      document
         .fillColor('#475569')
         .font('Helvetica')
         .fontSize(14)
         .text(
           'Ingen varer er under minimum lige nu.',
           left,
-          doc.y,
+          document.y,
           {
             width: contentWidth
           }
         );
     } else {
-      let previousCategory = null;
-
-      for (const item of list) {
-        const category = String(
-          item.cat || 'Uden kategori'
-        );
-
-        if (category !== previousCategory) {
-          drawSectionHeading(category);
-          previousCategory = category;
-        }
-
-        drawItem(item);
-      }
+      /*
+       * Ingen gruppering og ingen ny sortering.
+       *
+       * Varerne tegnes direkte i countOrder-rækkefølgen.
+       * Varer, der ikke mangler, er allerede filtreret væk.
+       */
+      items.forEach((item, index) => {
+        drawItemCard(item, index + 1);
+      });
     }
 
-    const range = doc.bufferedPageRange();
+    /*
+     * Sidenumre.
+     */
+    const pageRange =
+      document.bufferedPageRange();
 
     for (
-      let index = range.start;
-      index < range.start + range.count;
-      index += 1
+      let pageIndex = pageRange.start;
+      pageIndex <
+      pageRange.start + pageRange.count;
+      pageIndex += 1
     ) {
-      doc.switchToPage(index);
+      document.switchToPage(pageIndex);
 
-      doc
+      document
         .fillColor('#94a3b8')
         .font('Helvetica')
         .fontSize(8)
         .text(
-          `Side ${index + 1} af ${range.count}`,
+          `Side ${pageIndex + 1} af ${pageRange.count}`,
           left,
-          doc.page.height - 28,
+          document.page.height - 27,
           {
             width: contentWidth,
             align: 'right'
@@ -364,55 +565,109 @@ function createShoppingListPdf(list) {
         );
     }
 
-    doc.end();
+    document.end();
   });
 }
 
+/*
+ * Hent og klargør data.
+ */
+const inventoryItems =
+  await fetchInventory();
+
+const activeItems =
+  inventoryItems.filter(
+    item => !isDiscontinued(item)
+  );
+
+const discontinuedItems =
+  inventoryItems.filter(isDiscontinued);
+
+/*
+ * Det er denne kæde, der sikrer:
+ *
+ * 1. Kun varer under minimum kommer med.
+ * 2. Rækkefølgen følger countOrder fra optællingen.
+ */
+const lowStockItems = activeItems
+  .filter(isLowStock)
+  .sort(compareByCountOrder);
+
+const currentDate =
+  formatCurrentDate();
+
 const pdfBuffer =
-  await createShoppingListPdf(lowItems);
+  await createShoppingListPdf(
+    lowStockItems,
+    currentDate
+  );
 
+/*
+ * Kort mailtekst. Selve listen ligger i PDF'en.
+ */
 const subject =
-  `Indkøbsliste fra Sortiment liste – ${lowItems.length} varer`;
+  `Indkøbsliste fra Sortiment liste – ` +
+  `${lowStockItems.length} varer`;
 
-const text = [
+const mailText = [
   'Hej,',
   '',
-  `Indkøbslisten for ${now} er vedhæftet som PDF.`,
-  `PDF'en indeholder ${lowItems.length} varer, der er under minimum.`,
+  `Indkøbslisten for ${currentDate} er vedhæftet som PDF.`,
+  '',
+  `PDF'en indeholder ${lowStockItems.length} varer, der er under minimum.`,
   `Udgåede varer er ignoreret: ${discontinuedItems.length}.`,
+  '',
+  'Varerne i PDF’en står i samme rækkefølge som under optællingen.',
   '',
   'Mvh',
   'Sortiment liste'
 ].join('\n');
 
-const port = Number(
-  process.env.SMTP_PORT || 465
-);
+/*
+ * Mailforbindelse.
+ */
+const smtpPort =
+  Number(process.env.SMTP_PORT || 465);
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port,
-  secure: port === 465,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+const transporter =
+  nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: smtpPort,
 
+    /*
+     * Port 465 bruger normalt direkte TLS.
+     * Port 587 starter normalt uden secure og
+     * opgraderer efterfølgende med STARTTLS.
+     */
+    secure: smtpPort === 465,
+
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+
+/*
+ * Test forbindelsen inden afsendelse.
+ */
 await transporter.verify();
 
+/*
+ * Send mail med PDF som vedhæftet fil.
+ */
 await transporter.sendMail({
   from: process.env.EMAIL_FROM,
   to: process.env.EMAIL_TO,
   cc: process.env.EMAIL_CC || undefined,
+
   subject,
-  text,
+  text: mailText,
+
   attachments: [
     {
       filename:
-        `indkoebsliste-${new Date()
-          .toISOString()
-          .slice(0, 10)}.pdf`,
+        `indkoebsliste-${fileDate()}.pdf`,
+
       content: pdfBuffer,
       contentType: 'application/pdf'
     }
@@ -420,6 +675,7 @@ await transporter.sendMail({
 });
 
 console.log(
-  `Sent low-stock PDF email to ${process.env.EMAIL_TO}. ` +
-  `Low-stock items: ${lowItems.length}`
+  `Sent low-stock PDF email to ` +
+  `${process.env.EMAIL_TO}. ` +
+  `Low-stock items: ${lowStockItems.length}.`
 );
