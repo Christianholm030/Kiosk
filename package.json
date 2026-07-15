@@ -1,12 +1,13 @@
 {
   "name": "sortiment-liste-weekly-email",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "send-low-stock-email": "node scripts/send-low-stock-email.mjs"
   },
   "dependencies": {
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "pdfkit": "^0.17.2"
   }
 }
