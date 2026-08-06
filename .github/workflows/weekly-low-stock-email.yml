@@ -21,13 +21,13 @@ jobs:
           node-version: "24"
 
       - name: Installer dependencies
-        run: npm install nodemailer pdfkit
+        run: npm install
 
       - name: Kontroller JavaScript
-        run: node --check send-low-stock-email.mjs
+        run: node --check ./scripts/send-low-stock-email.mjs
 
       - name: Send indkøbsliste
-        run: node send-low-stock-email.mjs
+        run: node ./scripts/send-low-stock-email.mjs
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
