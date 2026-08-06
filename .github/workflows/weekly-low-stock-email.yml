@@ -4,16 +4,12 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 2 * * 1'
-      timezone: 'Europe/Copenhagen'
-
-permissions:
-  contents: read
+    - cron: "0 2 * * 1"
+      timezone: "Europe/Copenhagen"
 
 jobs:
   send-low-stock-email:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Hent repository
@@ -22,13 +18,12 @@ jobs:
       - name: Opsæt Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
+          node-version: "24"
 
       - name: Installer dependencies
-        run: npm ci
+        run: npm install nodemailer pdfkit
 
-      - name: Kontrollér JavaScript-syntaks
+      - name: Kontroller JavaScript
         run: node --check send-low-stock-email.mjs
 
       - name: Send indkøbsliste
@@ -36,11 +31,14 @@ jobs:
         env:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
           FIREBASE_DATABASE_AUTH: ${{ secrets.FIREBASE_DATABASE_AUTH }}
-          DEFAULT_REORDER: ${{ secrets.DEFAULT_REORDER }}
+
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
+
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_CC: ${{ secrets.EMAIL_CC }}
+
+          DEFAULT_REORDER: ${{ secrets.DEFAULT_REORDER }}
