@@ -26,6 +26,15 @@ jobs:
       - name: Kontroller JavaScript
         run: node --check ./scripts/send-low-stock-email.mjs
 
+      - name: Debug schedule
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Schedule: ${{ github.event.schedule }}"
+          echo "UTC time:"
+          date -u
+          echo "Copenhagen time:"
+          TZ=Europe/Copenhagen date
+
       - name: Send indkøbsliste
         run: node ./scripts/send-low-stock-email.mjs
         env:
